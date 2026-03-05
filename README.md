@@ -5,7 +5,7 @@ A fully self-hosted AI agent built on n8n + PostgreSQL + Claude. Talks to you vi
 ## What it does
 
 - **Telegram chat** — talk to your AI agent directly via Telegram
-- **Long-term memory** — remembers conversations and important context in PostgreSQL
+- **Long-term memory** — remembers conversations and important context in PostgreSQL with optional vector search (RAG)
 - **MCP Server Builder** — builds new API integrations on demand (just ask: *"build me an MCP server for the GitHub API"*)
 - **Smart reminders** — timed Telegram reminders
 - **Extensible** — add new tools and capabilities through natural language
@@ -16,7 +16,8 @@ A fully self-hosted AI agent built on n8n + PostgreSQL + Claude. Talks to you vi
 Telegram
   ↓
 n8n-claw Agent (Claude Sonnet)
-  ├── Memory (PostgreSQL via PostgREST)
+  ├── Memory Save/Search (PostgreSQL + vector embeddings)
+  ├── Memory Consolidation (daily RAG pipeline)
   ├── MCP Client → MCP Servers (n8n workflows)
   ├── MCP Builder → creates new MCP Servers automatically
   └── Reminder Factory
@@ -97,6 +98,16 @@ The easiest way is to open each workflow and click **"Create new credential"** d
 - Get a free key at [brave.com/search/api](https://brave.com/search/api/) (free tier: 2,000 queries/month)
 - Without this key, the MCP Builder cannot find API docs automatically — you'd need to paste docs manually into the prompt
 
+**Optional: Embeddings for semantic memory search:**
+
+During setup, you'll be asked for an embedding API key. This enables vector-based memory search (RAG) — the agent can find memories by meaning, not just exact keywords.
+
+- **OpenAI** (default): `text-embedding-3-small` — [platform.openai.com](https://platform.openai.com) (requires API key)
+- **Voyage AI**: `voyage-3-lite` — [voyageai.com](https://www.voyageai.com) (free tier available)
+- **Ollama**: `nomic-embed-text` — local, no API key needed (requires Ollama running on your server)
+
+Without an embedding key, the agent still works — it falls back to keyword-based memory search.
+
 ### Step 3 — Activate remaining workflows
 
 The main agent is activated automatically by setup. In n8n UI, toggle the remaining workflows on:
@@ -109,6 +120,7 @@ The main agent is activated automatically by setup. In n8n UI, toggle the remain
 | ⏰ ReminderFactory | Creates timed Telegram reminders |
 | 🌤️ MCP: Weather | Example MCP Server — weather via Open-Meteo (no API key) |
 | ⚙️ WorkflowBuilder | Builds general n8n automations |
+| 🧠 Memory Consolidation | Daily RAG pipeline — summarizes conversations into vector memory |
 
 ### Step 4 — Start chatting
 

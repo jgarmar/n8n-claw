@@ -62,6 +62,19 @@ _load_env() {
 }
 _load_env
 
+# Merge new keys from .env.example into existing .env (add missing, don't overwrite)
+if [ -f .env ] && [ -f .env.example ]; then
+  while IFS='=' read -r key val; do
+    [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "$key" ]] && continue
+    key="$(echo "$key" | xargs)"
+    if ! grep -q "^${key}=" .env 2>/dev/null; then
+      echo "${key}=${val}" >> .env
+    fi
+  done < .env.example
+  _load_env  # Reload after merge
+fi
+
 # Helper: set env var in .env (update if exists, append if not) + export
 set_env() {
   local key="$1" val="$2"
@@ -321,9 +334,17 @@ fi
 
 # ── 9. Apply DB schema ───────────────────────────────────────
 echo -e "\n${GREEN}🗄️  Applying database schema...${NC}"
-LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres \
-  -f supabase/migrations/001_schema.sql > /dev/null 2>&1
+SCHEMA_OUTPUT=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres \
+  -f supabase/migrations/001_schema.sql 2>&1)
+SCHEMA_ERRORS=$(echo "$SCHEMA_OUTPUT" | grep -i "error" | head -5)
+if [ -n "$SCHEMA_ERRORS" ]; then
+  echo -e "  ${YELLOW}⚠️  Schema warnings:${NC}"
+  echo "$SCHEMA_ERRORS" | while read line; do echo "    $line"; done
+fi
 echo "  ✅ Schema applied"
+
+# Reload PostgREST schema cache so new tables are immediately available via API
+docker kill --signal=SIGUSR1 $(docker ps -q --filter name=rest) 2>/dev/null || true
 
 N8N_BASE="${N8N_URL:-http://localhost:5678}"
 ANTHROPIC_CRED_ID="${ANTHROPIC_CRED_ID:-REPLACE_WITH_YOUR_CREDENTIAL_ID}"
@@ -395,6 +416,52 @@ fi  # end INSTALL_MODE guard for credentials
 declare -A WF_IDS
 if [ "$INSTALL_MODE" = "update" ] && [ "$FORCE_FLAG" != "--force" ]; then
   echo -e "\n${GREEN}📦 Skipping workflow import (update mode — use --force to reimport)${NC}"
+
+  # Import NEW workflows that don't exist yet on the instance
+  echo "  Checking for new workflows..."
+  mkdir -p workflows/deployed
+  EXISTING_WF_NAMES=$(curl -s "${N8N_BASE}/api/v1/workflows?limit=100" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" | python3 -c "
+import json,sys
+data = json.load(sys.stdin)
+for wf in data.get('data', []):
+    print(wf['name'])
+" 2>/dev/null)
+
+  for f in workflows/*.json; do
+    [ -f "$f" ] || continue
+    wf_name=$(python3 -c "import json; print(json.load(open('$f')).get('name','?'))" 2>/dev/null)
+
+    # Skip if workflow already exists on instance
+    if echo "$EXISTING_WF_NAMES" | grep -qF "$wf_name"; then
+      continue
+    fi
+
+    # New workflow found — prepare and import
+    echo -e "  ${CYAN}📥 New workflow: ${wf_name}${NC}"
+    out="workflows/deployed/$(basename $f)"
+    cp "$f" "$out"
+    sed -i \
+      -e "s|{{N8N_URL}}|${N8N_URL:-http://localhost:5678}|g" \
+      -e "s|{{N8N_INTERNAL_URL}}|http://172.17.0.1:5678|g" \
+      -e "s|{{N8N_API_KEY}}|${N8N_API_KEY}|g" \
+      -e "s|{{SUPABASE_URL}}|http://172.17.0.1:8000|g" \
+      -e "s|{{SUPABASE_SERVICE_KEY}}|${SUPABASE_SERVICE_KEY}|g" \
+      -e "s|{{SUPABASE_ANON_KEY}}|${SUPABASE_ANON_KEY}|g" \
+      -e "s|{{TELEGRAM_CHAT_ID}}|${TELEGRAM_CHAT_ID}|g" \
+      "$out"
+
+    resp=$(curl -s -X POST "${N8N_BASE}/api/v1/workflows" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" -d @"$out")
+    new_id=$(echo "$resp" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+    if [ -n "$new_id" ]; then
+      echo -e "    ✅ Imported (ID: $new_id)"
+    else
+      echo -e "    ⚠️  Import failed"
+    fi
+  done
+
 else
 echo -e "\n${GREEN}📦 Importing workflows...${NC}"
 mkdir -p workflows/deployed
@@ -418,22 +485,57 @@ for f in workflows/*.json; do
   [ -n "$POSTGRES_CRED_ID" ] && [ "$POSTGRES_CRED_ID" != "REPLACE_WITH_YOUR_CREDENTIAL_ID" ] && \
     sed -i "s|REPLACE_WITH_YOUR_CREDENTIAL_ID\", \"name\": \"Supabase Postgres\"|${POSTGRES_CRED_ID}\", \"name\": \"Supabase Postgres\"|g" "$out"
 done
-IMPORT_ORDER="mcp-client reminder-factory mcp-weather-example workflow-builder mcp-builder n8n-claw-agent"
+IMPORT_ORDER="mcp-client reminder-factory mcp-weather-example workflow-builder mcp-builder memory-consolidation n8n-claw-agent"
+
+# Fetch existing workflows once (for upsert: update if exists, create if not)
+EXISTING_WFS=$(curl -s "${N8N_BASE}/api/v1/workflows?limit=100" \
+  -H "X-N8N-API-KEY: ${N8N_API_KEY}")
 
 for name in $IMPORT_ORDER; do
   f="workflows/deployed/${name}.json"
   [ -f "$f" ] || continue
   wf_name=$(python3 -c "import json; print(json.load(open('$f')).get('name','?'))" 2>/dev/null)
-  resp=$(curl -s -X POST "${N8N_BASE}/api/v1/workflows" \
-    -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
-    -H "Content-Type: application/json" -d @"$f")
-  wf_id=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
-  if [ -z "$wf_id" ]; then
-    err=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','unknown error'))" 2>/dev/null)
-    echo -e "  ${RED}❌ ${wf_name}: ${err}${NC}"
+
+  # Check if workflow with this name already exists
+  existing_id=$(echo "$EXISTING_WFS" | python3 -c "
+import json,sys
+name = sys.argv[1]
+data = json.load(sys.stdin)
+for wf in data.get('data', []):
+    if wf['name'] == name:
+        print(wf['id']); break
+" "$wf_name" 2>/dev/null)
+
+  if [ -n "$existing_id" ]; then
+    # UPDATE existing workflow (PUT) — preserves workflow ID, no duplicates
+    UPDATE_BODY=$(python3 -c "
+import json, sys
+wf = json.load(open(sys.argv[1]))
+print(json.dumps({
+    'name': wf['name'],
+    'nodes': wf.get('nodes', []),
+    'connections': wf.get('connections', {}),
+    'settings': wf.get('settings', {})
+}))
+" "$f" 2>/dev/null)
+    resp=$(curl -s -X PUT "${N8N_BASE}/api/v1/workflows/${existing_id}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" -d "$UPDATE_BODY")
+    WF_IDS[$name]="$existing_id"
+    echo "  ✅ ${wf_name} → ${existing_id} (updated)"
   else
-    WF_IDS[$name]=$wf_id
-    echo "  ✅ ${wf_name} → ${wf_id}"
+    # CREATE new workflow (POST)
+    resp=$(curl -s -X POST "${N8N_BASE}/api/v1/workflows" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" -d @"$f")
+    wf_id=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
+    if [ -z "$wf_id" ]; then
+      err=$(echo "$resp" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('message','unknown error'))" 2>/dev/null)
+      echo -e "  ${RED}❌ ${wf_name}: ${err}${NC}"
+    else
+      WF_IDS[$name]=$wf_id
+      echo "  ✅ ${wf_name} → ${wf_id} (created)"
+    fi
   fi
 done
 
@@ -519,27 +621,80 @@ if [ -n "$AGENT_ID" ]; then
   fi
 fi
 
-# ── 12. Setup Wizard via CLI (no n8n workflow needed) ────────
-if [ "$INSTALL_MODE" = "update" ] && [ "$FORCE_FLAG" != "--force" ]; then
-  echo -e "\n${GREEN}🧙 Skipping personalization (update mode — use --force to reconfigure)${NC}"
-else
-echo -e "\n${GREEN}🧙 Personalization setup${NC}"
-echo "────────────────────────────"
-echo "Let's configure your agent's personality."
-echo ""
-
+# Helper for interactive prompts (used by both update and fresh install)
 cli_ask() {
   local prompt="$1" default="$2"
   read -rp "  ${prompt} [${default}]: " val
   echo "${val:-$default}"
 }
 
-BOT_NAME=$(cli_ask "Agent name" "Assistant")
-USER_DISPLAY=$(cli_ask "Your name" "User")
-LANG=$(cli_ask "Preferred language" "English")
-CTX=$(cli_ask "What will you use this agent for" "Personal assistant and automation")
+# ── Update mode: offer new feature configuration ─────────────
+if [ "$INSTALL_MODE" = "update" ] && [ "$FORCE_FLAG" != "--force" ] && [ -z "${EMBEDDING_API_KEY}" ]; then
+  echo ""
+  echo -e "${GREEN}🧠 New feature: Semantic memory search (RAG)${NC}"
+  echo "  Provide an embedding API key to enable vector-based memory search."
+  echo "  Supported providers: openai (default), voyage, ollama"
+  echo "  Press Enter to skip."
+  read -rp "  Embedding API Key [skip]: " EMBEDDING_API_KEY_INPUT
+  if [ -n "$EMBEDDING_API_KEY_INPUT" ]; then
+    EMBEDDING_API_KEY="$EMBEDDING_API_KEY_INPUT"
+    EMBEDDING_PROVIDER=$(cli_ask "Embedding provider" "openai")
+    EMBEDDING_MODEL_DEFAULT="text-embedding-3-small"
+    [ "$EMBEDDING_PROVIDER" = "voyage" ] && EMBEDDING_MODEL_DEFAULT="voyage-3-lite"
+    [ "$EMBEDDING_PROVIDER" = "ollama" ] && EMBEDDING_MODEL_DEFAULT="nomic-embed-text"
+    EMBEDDING_MODEL=$(cli_ask "Embedding model" "$EMBEDDING_MODEL_DEFAULT")
+    set_env EMBEDDING_API_KEY "$EMBEDDING_API_KEY"
+    set_env EMBEDDING_PROVIDER "$EMBEDDING_PROVIDER"
+    set_env EMBEDDING_MODEL "$EMBEDDING_MODEL"
+    # Write embedding config to DB (tools_config table)
+    LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
+      INSERT INTO tools_config (tool_name, config, enabled)
+      VALUES ('embedding', jsonb_build_object('provider','${EMBEDDING_PROVIDER:-openai}','api_key','${EMBEDDING_API_KEY}','model','${EMBEDDING_MODEL:-text-embedding-3-small}'), true)
+      ON CONFLICT (tool_name) DO UPDATE SET config = EXCLUDED.config, enabled = true, updated_at = now();
+    " > /dev/null 2>&1
+    echo -e "  ${GREEN}✅ Embeddings configured (${EMBEDDING_PROVIDER}/${EMBEDDING_MODEL})${NC}"
+  else
+    echo -e "  ⏭️  Skipped — using keyword search"
+  fi
+  # Write anthropic key to DB in update mode too
+  if [ -n "$ANTHROPIC_API_KEY" ] && [[ "$ANTHROPIC_API_KEY" != "your_"* ]]; then
+    LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
+      INSERT INTO tools_config (tool_name, config, enabled)
+      VALUES ('anthropic', jsonb_build_object('api_key','${ANTHROPIC_API_KEY}'), true)
+      ON CONFLICT (tool_name) DO UPDATE SET config = EXCLUDED.config, enabled = true, updated_at = now();
+    " > /dev/null 2>&1
+  fi
+fi
+
+# ── 12. Setup Wizard via CLI (no n8n workflow needed) ────────
+if [ "$INSTALL_MODE" = "update" ] && [ "$FORCE_FLAG" != "--force" ]; then
+  echo -e "\n${GREEN}🧙 Skipping personalization (update mode — use --force to reconfigure)${NC}"
+else
+
+# Load existing personalization as defaults (for --force reconfiguration)
+EXISTING_BOT_NAME=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
+  "SELECT content FROM soul WHERE key='name' LIMIT 1" 2>/dev/null | xargs)
+EXISTING_USER=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
+  "SELECT display_name FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+EXISTING_TZ=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
+  "SELECT timezone FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+EXISTING_CTX=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
+  "SELECT context FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+
+echo -e "\n${GREEN}🧙 Personalization setup${NC}"
+echo "────────────────────────────"
+echo "Let's configure your agent's personality."
+if [ -n "$EXISTING_BOT_NAME" ]; then
+  echo "  (Press Enter to keep current values)"
+fi
+echo ""
+
 SYS_TZ=$(timedatectl show --property=Timezone --value 2>/dev/null || cat /etc/timezone 2>/dev/null || echo "UTC")
-TIMEZONE=$(cli_ask "Timezone" "$SYS_TZ")
+BOT_NAME=$(cli_ask "Agent name" "${EXISTING_BOT_NAME:-Assistant}")
+USER_DISPLAY=$(cli_ask "Your name" "${EXISTING_USER:-User}")
+LANG=$(cli_ask "Preferred language" "English")
+CTX=$(cli_ask "What will you use this agent for" "${EXISTING_CTX:-Personal assistant and automation}")
+TIMEZONE=$(cli_ask "Timezone" "${EXISTING_TZ:-$SYS_TZ}")
 
 echo ""
 echo "  Communication style:"
@@ -572,6 +727,50 @@ if [ -n "$CUSTOM_PERSONA" ]; then
   STYLE="$CUSTOM_PERSONA"
   PROACTIVE=""
   echo -e "  ${GREEN}✅ Using custom persona${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}🧠 RAG / Vector Memory (optional)${NC}"
+echo "  For semantic memory search, provide an embedding API key."
+echo "  Supported providers: openai (default), voyage, ollama"
+if [ -n "$EMBEDDING_API_KEY" ]; then
+  echo "  Current key: ${EMBEDDING_API_KEY:0:8}...  (Enter to keep, or enter new key)"
+  read -rp "  Embedding API Key [keep]: " EMBEDDING_API_KEY_INPUT
+  [ -z "$EMBEDDING_API_KEY_INPUT" ] && EMBEDDING_API_KEY_INPUT="$EMBEDDING_API_KEY"
+else
+  echo "  Leave empty to skip — keyword search will be used instead."
+  read -rp "  Embedding API Key [skip]: " EMBEDDING_API_KEY_INPUT
+fi
+if [ -n "$EMBEDDING_API_KEY_INPUT" ]; then
+  EMBEDDING_API_KEY="$EMBEDDING_API_KEY_INPUT"
+  EMBEDDING_PROVIDER=$(cli_ask "Embedding provider" "openai")
+  EMBEDDING_MODEL_DEFAULT="text-embedding-3-small"
+  [ "$EMBEDDING_PROVIDER" = "voyage" ] && EMBEDDING_MODEL_DEFAULT="voyage-3-lite"
+  [ "$EMBEDDING_PROVIDER" = "ollama" ] && EMBEDDING_MODEL_DEFAULT="nomic-embed-text"
+  EMBEDDING_MODEL=$(cli_ask "Embedding model" "$EMBEDDING_MODEL_DEFAULT")
+  set_env EMBEDDING_API_KEY "$EMBEDDING_API_KEY"
+  set_env EMBEDDING_PROVIDER "$EMBEDDING_PROVIDER"
+  set_env EMBEDDING_MODEL "$EMBEDDING_MODEL"
+  echo -e "  ${GREEN}✅ Embeddings configured (${EMBEDDING_PROVIDER}/${EMBEDDING_MODEL})${NC}"
+else
+  echo -e "  ⏭️  Skipped — using keyword search"
+fi
+
+# Write embedding + anthropic config to DB (tools_config table)
+# Workflows read config from DB at runtime, not from env vars
+if [ -n "$EMBEDDING_API_KEY" ]; then
+  LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
+    INSERT INTO tools_config (tool_name, config, enabled)
+    VALUES ('embedding', jsonb_build_object('provider','${EMBEDDING_PROVIDER:-openai}','api_key','${EMBEDDING_API_KEY}','model','${EMBEDDING_MODEL:-text-embedding-3-small}'), true)
+    ON CONFLICT (tool_name) DO UPDATE SET config = EXCLUDED.config, enabled = true, updated_at = now();
+  " > /dev/null 2>&1
+fi
+if [ -n "$ANTHROPIC_API_KEY" ] && [[ "$ANTHROPIC_API_KEY" != "your_"* ]]; then
+  LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
+    INSERT INTO tools_config (tool_name, config, enabled)
+    VALUES ('anthropic', jsonb_build_object('api_key','${ANTHROPIC_API_KEY}'), true)
+    ON CONFLICT (tool_name) DO UPDATE SET config = EXCLUDED.config, enabled = true, updated_at = now();
+  " > /dev/null 2>&1
 fi
 
 N8N_URL_FOR_MCP="${DOMAIN:+https://$DOMAIN}"
@@ -714,6 +913,10 @@ if [ "$INSTALL_MODE" = "update" ]; then
     echo "  Workflows reimported, personality reconfigured"
   else
     echo "  Workflows + personality unchanged (use --force to reimport)"
+  fi
+  if [ -z "${EMBEDDING_API_KEY}" ]; then
+    echo ""
+    echo -e "  ${CYAN}💡 Tip: Run './setup.sh' again to configure semantic memory search (RAG)${NC}"
   fi
   echo ""
   exit 0

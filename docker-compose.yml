@@ -18,6 +18,8 @@ services:
       - GENERIC_TIMEZONE=${TIMEZONE:-Europe/Berlin}
       - N8N_LOG_LEVEL=info
       - N8N_SECURE_COOKIE=false
+      # API keys (Anthropic, Embeddings) are stored in DB (tools_config table)
+      # and read by workflows at runtime via PostgREST — not as env vars
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=db
       - DB_POSTGRESDB_PORT=5432
@@ -87,7 +89,7 @@ services:
       KONG_DNS_ORDER: LAST,A,CNAME
       KONG_PLUGINS: request-transformer,cors,key-auth,acl
     volumes:
-      - ./supabase/kong.yml:/var/lib/kong/kong.yml:ro
+      - ./supabase/kong.deployed.yml:/var/lib/kong/kong.yml:ro
     depends_on:
       - rest
     networks:
