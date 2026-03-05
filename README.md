@@ -187,10 +187,11 @@ Point your domain's DNS A record to the VPS IP before running this.
 Re-run `setup.sh` at any time to update:
 
 ```bash
-cd n8n-claw && git pull && ./setup.sh
+cd n8n-claw && ./setup.sh
 ```
 
 In update mode, the script will:
+- **Auto-update from git** (`git pull --ff-only`) — falls back gracefully if there are local changes
 - **Pull latest Docker images** (n8n, PostgreSQL, etc.)
 - **Restart all services** with the new images
 - **Preserve your encryption key** — automatically recovered from the existing volume

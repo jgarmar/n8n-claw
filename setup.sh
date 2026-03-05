@@ -83,6 +83,9 @@ if docker volume inspect n8n-claw_n8n_data > /dev/null 2>&1; then
   CYAN='\033[0;36m'
   echo -e "\n${CYAN}🔄 Existing installation detected — running in update mode${NC}"
   echo "  Use --force to reimport workflows and reconfigure personality"
+  # Auto-update from git if possible
+  git pull --ff-only 2>/dev/null && echo -e "  ${GREEN}✅ Updated to latest version${NC}" \
+    || echo -e "  ⚠️  Could not auto-update — run 'git pull' manually if needed"
 fi
 
 ask() {
