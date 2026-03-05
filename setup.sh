@@ -152,7 +152,9 @@ if [ -z "$N8N_API_KEY" ] || [[ "$N8N_API_KEY" == your_* ]]; then
     sleep 2; echo -n "."
   done
   echo ""
+  # Supabase postgres image needs supabase_admin role for extension ownership
   LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -p 5432 -U postgres -d postgres \
+    -c "DO \$\$BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='supabase_admin') THEN CREATE ROLE supabase_admin LOGIN SUPERUSER; END IF; END\$\$;" \
     -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";' > /dev/null 2>&1
 
   # Now start n8n (DB is ready with uuid extension)
