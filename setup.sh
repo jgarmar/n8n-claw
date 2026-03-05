@@ -213,6 +213,10 @@ echo "  ✅ Kong config ready"
 
 # ── 7. Start all services ────────────────────────────────────
 echo -e "\n${GREEN}🐳 Starting all services...${NC}"
+if [ "$INSTALL_MODE" = "update" ]; then
+  echo "  Pulling latest images..."
+  docker compose pull 2>&1 | tail -5
+fi
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD \
 SUPABASE_JWT_SECRET=$SUPABASE_JWT_SECRET \
 N8N_ENCRYPTION_KEY=$N8N_ENCRYPTION_KEY \
