@@ -34,12 +34,7 @@ ACHTUNG: Nach dem Build einmal im n8n UI deaktivieren + aktivieren (Webhook-Bug)
 Alle aktiven Server: SELECT * FROM mcp_registry WHERE active = true;')
 ON CONFLICT (key) DO UPDATE SET content = EXCLUDED.content;
 
--- User profile template (replace with your data)
-INSERT INTO public.user_profiles (user_id, name, display_name, timezone, context) VALUES
-  ('telegram:YOUR_TELEGRAM_ID', 'your_username', 'Your Name', 'Europe/Berlin', 'Replace with your context')
-ON CONFLICT (user_id) DO UPDATE SET
-  name = EXCLUDED.name,
-  display_name = EXCLUDED.display_name;
+-- User profile: created by setup.sh with real values (no placeholder needed here)
 
 -- MCP Registry: Wetter example (no API key needed)
 INSERT INTO public.mcp_registry (server_name, path, mcp_url, description, tools, active) VALUES

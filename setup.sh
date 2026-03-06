@@ -717,11 +717,11 @@ else
 EXISTING_BOT_NAME=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
   "SELECT content FROM soul WHERE key='name' LIMIT 1" 2>/dev/null | xargs)
 EXISTING_USER=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
-  "SELECT display_name FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+  "SELECT display_name FROM user_profiles WHERE user_id = 'telegram:${TELEGRAM_CHAT_ID}' LIMIT 1" 2>/dev/null | xargs)
 EXISTING_TZ=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
-  "SELECT timezone FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+  "SELECT timezone FROM user_profiles WHERE user_id = 'telegram:${TELEGRAM_CHAT_ID}' LIMIT 1" 2>/dev/null | xargs)
 EXISTING_CTX=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -t -c \
-  "SELECT context FROM user_profiles LIMIT 1" 2>/dev/null | xargs)
+  "SELECT context FROM user_profiles WHERE user_id = 'telegram:${TELEGRAM_CHAT_ID}' LIMIT 1" 2>/dev/null | xargs)
 
 echo -e "\n${GREEN}🧙 Personalization setup${NC}"
 echo "────────────────────────────"
