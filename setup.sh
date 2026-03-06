@@ -932,11 +932,10 @@ INSERT INTO public.soul (key, content) VALUES
 ON CONFLICT (key) DO UPDATE SET content = EXCLUDED.content;
 
 INSERT INTO public.user_profiles (user_id, name, display_name, timezone, context, preferences, setup_done, setup_step)
-VALUES ('telegram:{chat_id}', '{uname}', '{user}', '{tz}', '{ctx}', '{{"language": "{lang}"}}'::jsonb, true, 5)
+VALUES ('telegram:{chat_id}', '{uname}', '{user}', '{tz}', '{ctx}', '{{"language": "{lang}"}}'::jsonb, false, 0)
 ON CONFLICT (user_id) DO UPDATE SET
   display_name = EXCLUDED.display_name, context = EXCLUDED.context, timezone = EXCLUDED.timezone,
-  preferences = COALESCE(user_profiles.preferences, '{{}}'::jsonb) || '{{"language": "{lang}"}}'::jsonb,
-  setup_done = true;
+  preferences = COALESCE(user_profiles.preferences, '{{}}'::jsonb) || '{{"language": "{lang}"}}'::jsonb;
 
 INSERT INTO public.mcp_registry (server_name, path, mcp_url, description, tools, active)
 VALUES ('Wetter', 'wetter', '{mcp_url}/mcp/wetter', 'Weather via Open-Meteo', ARRAY['get_weather'], true)
@@ -1064,6 +1063,23 @@ PRIORITIES:
 PREFERENCES (set_preference action):
 - Use to save user preferences like morning_briefing settings
 - Example: {{"action":"set_preference","key":"morning_briefing","value":{{"enabled":true,"time":"08:00"}}}}'),
+
+  ('onboarding', 'When setup_done is false (first contact with this user):
+- Greet the user by their display_name
+- Introduce yourself briefly (your name from the soul config, what you are)
+- List your capabilities with one concrete example each:
+  * Answer questions and web search ("Who won the last World Cup?")
+  * Manage tasks ("Create a task: tax return by Friday")
+  * Set reminders ("Remind me in 2 hours to check the oven")
+  * Understand voice messages (just send one)
+  * Analyze photos ("What do you see in this picture?")
+  * Read and summarize PDFs (just send a document)
+  * Recognize locations (share your location)
+  * Remember things ("Remember: I take my coffee black")
+  * Build new API integrations ("Build me a GitHub API connection")
+- Respond in the user''s language (check their language preference)
+- This introduction happens ONLY ONCE. If setup_done is true, skip this entirely and respond normally.
+- setup_done will be set to true automatically after your first response — you do not need to do this yourself.'),
 
   ('user_context', 'The user is {user}. Context: {ctx}')
 

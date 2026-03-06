@@ -105,13 +105,6 @@ The easiest way is to open each workflow and click **"Create new credential"** d
 - Select `Anthropic API` as the chat model
 - *(not set automatically due to n8n credential linking)*
 
-**MCP Builder — Brave Search API Key:**
-- The MCP Builder uses Brave Search to look up API documentation automatically
-- Open the **MCP Builder** workflow → click the **"Search API Docs"** node
-- Under *Headers*, set `X-Subscription-Token` to your Brave Search API key
-- Get a free key at [brave.com/search/api](https://brave.com/search/api/) (free tier: 2,000 queries/month)
-- Without this key, the MCP Builder cannot find API docs automatically — you'd need to paste docs manually into the prompt
-
 **Optional: Embeddings for semantic memory search:**
 
 During setup, you'll be asked for an embedding API key. This enables vector-based memory search (RAG) — the agent can find memories by meaning, not just exact keywords.
@@ -185,7 +178,7 @@ Just ask your agent:
 > "Build me an MCP server for the OpenLibrary API — look up books by ISBN"
 
 The MCP Builder will:
-1. Search for API documentation automatically (via Brave Search + Jina Reader)
+1. Search for API documentation automatically (via SearXNG + Jina Reader)
 2. Generate working tool code
 3. Deploy two new n8n workflows (MCP trigger + sub-workflow)
 4. Register the server in the database
