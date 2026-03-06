@@ -634,7 +634,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const msg = $('Telegram Trigger').first().json.message;\nconst loc = msg.location;\nreturn [{\n  json: {\n    userMessage: `I'm sharing my location: ${loc.latitude}, ${loc.longitude}`\n  }\n}];"
+        "jsCode": "const msg = $('Telegram Trigger').first().json.message;\nconst loc = msg.location;\nreturn [{\n  json: {\n    userMessage: `I'm sharing my location: ${loc.latitude}, ${loc.longitude}\\n\\nUse the HTTP Tool to resolve the address via https://nominatim.openstreetmap.org/reverse?lat=${loc.latitude}&lon=${loc.longitude}&format=json&accept-language=de`\n  }\n}];"
       },
       "id": "format-location",
       "name": "Format Location",
