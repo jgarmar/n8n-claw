@@ -664,6 +664,7 @@ print(raw)
     echo "  ✅ Reminder:        ${WF_IDS[reminder-factory]}"
     echo "  ✅ WorkflowBuilder: ${WF_IDS[workflow-builder]}"
     echo "  ✅ MCP Builder:     ${WF_IDS[mcp-builder]}"
+    echo "  ✅ Library Manager: ${WF_IDS[mcp-library-manager]}"
     [ -n "$REAL_TELEGRAM_ID" ]  && echo "  ✅ Telegram cred:   ${REAL_TELEGRAM_ID}"
     [ -n "$REAL_POSTGRES_ID" ]  && echo "  ✅ Postgres cred:   ${REAL_POSTGRES_ID}"
     [ -n "$REAL_ANTHROPIC_ID" ] && echo "  ✅ Anthropic cred:  ${REAL_ANTHROPIC_ID} (if already added)"
