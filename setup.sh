@@ -743,6 +743,14 @@ if [ -n "$CONSOLID_ID" ]; then
   echo -e "  ${GREEN}✅ Memory Consolidation workflow activated${NC}"
 fi
 
+# Activate Credential Form (must be active for form URL to work)
+CREDFORM_ID=${WF_IDS['credential-form']}
+if [ -n "$CREDFORM_ID" ]; then
+  curl -s -X POST "${N8N_BASE}/api/v1/workflows/${CREDFORM_ID}/activate" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
+  echo -e "  ${GREEN}✅ Credential Form workflow activated${NC}"
+fi
+
 # Helper for interactive prompts (used by both update and fresh install)
 cli_ask() {
   local prompt="$1" default="$2"
