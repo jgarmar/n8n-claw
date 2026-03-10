@@ -242,29 +242,6 @@ The agent has a multi-layered memory system — it remembers things you tell it 
 
 ---
 
-## Task Management
-
-The agent can manage tasks for you — just tell it what you need in natural language.
-
-**Creating tasks:**
-> "Remind me to call the dentist tomorrow"
-> "Create a task: prepare presentation for Friday, high priority"
-> "I need to buy groceries by Saturday"
-
-**Checking tasks:**
-> "What are my tasks?"
-> "Show me overdue tasks"
-> "Task summary"
-
-**Updating tasks:**
-> "Mark the dentist task as done"
-> "Cancel the groceries task"
-> "Change the presentation priority to urgent"
-
-Tasks support priorities (`low`, `medium`, `high`, `urgent`), due dates, and subtasks.
-
----
-
 ## Project Memory
 
 Track ongoing work across multiple conversations with persistent project documents. Each project is a markdown file the agent creates, reads, and updates on demand — like a living notebook for each topic you're working on.
@@ -291,6 +268,29 @@ The agent reads the current document, adds your notes, and saves the updated ver
 > "The presentation is done"
 
 Sets the project status to `completed` — it disappears from the active list but stays in the database.
+
+---
+
+## Task Management
+
+The agent can manage tasks for you — just tell it what you need in natural language.
+
+**Creating tasks:**
+> "Remind me to call the dentist tomorrow"
+> "Create a task: prepare presentation for Friday, high priority"
+> "I need to buy groceries by Saturday"
+
+**Checking tasks:**
+> "What are my tasks?"
+> "Show me overdue tasks"
+> "Task summary"
+
+**Updating tasks:**
+> "Mark the dentist task as done"
+> "Cancel the groceries task"
+> "Change the presentation priority to urgent"
+
+Tasks support priorities (`low`, `medium`, `high`, `urgent`), due dates, and subtasks.
 
 ---
 
