@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Fetch all pending reminders that are due\nconst now = new Date().toISOString();\nconst reminders = await helpers.httpRequest({\n  method: 'GET',\n  url: `{{SUPABASE_URL}}/reminders?reminded_at=is.null&remind_at=lte.${now}&order=remind_at.asc`,\n  headers: {\n    'Authorization': 'Bearer {{SUPABASE_SERVICE_KEY}}',\n    'Content-Type': 'application/json'\n  },\n  json: true\n});\n\nif (!reminders || reminders.length === 0) {\n  return [];\n}\n\n// Return each reminder as a separate item for looping\nreturn reminders.map(r => ({ json: r }));"
+        "jsCode": "// Fetch all pending reminders that are due\nconst now = new Date().toISOString();\nconst reminders = await helpers.httpRequest({\n  method: 'GET',\n  url: `{{SUPABASE_URL}}/rest/v1/reminders?reminded_at=is.null&remind_at=lte.${now}&order=remind_at.asc`,\n  headers: {\n    'apikey': '{{SUPABASE_SERVICE_KEY}}',\n    'Content-Type': 'application/json'\n  },\n  json: true\n});\n\nif (!reminders || reminders.length === 0) {\n  return [];\n}\n\n// Return each reminder as a separate item for looping\nreturn reminders.map(r => ({ json: r }));"
       },
       "name": "Check Reminders",
       "type": "n8n-nodes-base.code",
@@ -139,7 +139,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Mark reminder as sent\nconst id = $('Has Reminders').item.json.id;\nawait helpers.httpRequest({\n  method: 'PATCH',\n  url: `{{SUPABASE_URL}}/reminders?id=eq.${id}`,\n  headers: {\n    'Authorization': 'Bearer {{SUPABASE_SERVICE_KEY}}',\n    'Content-Type': 'application/json'\n  },\n  body: { reminded_at: new Date().toISOString() },\n  json: true\n});\n\nreturn [{ json: { id, marked: true } }];"
+        "jsCode": "// Mark reminder as sent\nconst id = $('Has Reminders').item.json.id;\nawait helpers.httpRequest({\n  method: 'PATCH',\n  url: `{{SUPABASE_URL}}/rest/v1/reminders?id=eq.${id}`,\n  headers: {\n    'apikey': '{{SUPABASE_SERVICE_KEY}}',\n    'Content-Type': 'application/json'\n  },\n  body: { reminded_at: new Date().toISOString() },\n  json: true\n});\n\nreturn [{ json: { id, marked: true } }];"
       },
       "name": "Mark Done",
       "type": "n8n-nodes-base.code",
