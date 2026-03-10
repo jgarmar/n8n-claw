@@ -13,7 +13,7 @@ Talk to your agent in natural language — it manages tasks, remembers context a
 - **Morning briefing** — daily summary of your tasks at a time you choose
 - **MCP Server Builder** — builds new API integrations on demand (just ask: *"build me an MCP server for the GitHub API"*)
 - **Smart reminders** — timed Telegram reminders ("remind me in 2 hours to...")
-- **Scheduled tasks** — the agent executes instructions at a set time ("search HN for AI news at 9am")
+- **Scheduled actions** — the agent executes instructions at a set time ("search HN for AI news at 9am")
 - **Web search** — searches the web via built-in SearXNG instance (no API key needed)
 - **Extensible** — add new tools and capabilities through natural language
 
@@ -28,7 +28,7 @@ n8n-claw Agent (Claude Sonnet)
   ├── MCP Client          → calls tools on MCP Servers
   ├── MCP Builder          → creates new MCP Servers automatically
   ├── Library Manager     → install/remove MCP templates from catalog
-  ├── Reminder            — timed reminders + scheduled agent tasks
+  ├── Reminder            — timed reminders + scheduled actions
   ├── HTTP Tool           — simple web requests
   ├── Web Search          — search the web (SearXNG)
   └── Self Modify         — inspect/list n8n workflows
@@ -36,7 +36,7 @@ n8n-claw Agent (Claude Sonnet)
 Background Workflows (automated):
   💓 Heartbeat              — every 15 min: proactive reminders + morning briefing
   🧠 Memory Consolidation   — daily at 3am: summarizes conversations → long-term memory
-  ⏰ Reminder Runner         — every 1 min: sends due reminders + triggers scheduled tasks
+  ⏰ Reminder Runner         — every 1 min: sends due reminders + triggers scheduled actions
 ```
 
 ---
@@ -131,7 +131,7 @@ These workflows are **activated automatically** by setup — no action needed:
 | 🤖 n8n-claw Agent | Main agent — receives Telegram messages, calls tools |
 | 💓 Heartbeat | Background: proactive reminders + morning briefing (every 15 min) |
 | 🧠 Memory Consolidation | Background: summarizes conversations into long-term memory (daily 3am) |
-| ⏰ Reminder Runner | Background: delivers reminders + triggers scheduled tasks (every 1 min) |
+| ⏰ Reminder Runner | Background: delivers reminders + triggers scheduled actions (every 1 min) |
 
 These workflows need to be **activated manually** in n8n UI:
 
@@ -262,7 +262,7 @@ Tasks support priorities (`low`, `medium`, `high`, `urgent`), due dates, and sub
 
 ---
 
-## Reminders & Scheduled Tasks
+## Reminders & Scheduled Actions
 
 The agent supports two types of timed actions:
 
@@ -272,7 +272,7 @@ The agent supports two types of timed actions:
 > "Remind me tomorrow at 9am about the doctor's appointment"
 > "Set a reminder for Friday at 3pm: submit the report"
 
-**Scheduled Tasks** — the agent actively executes instructions at the specified time and sends the result:
+**Scheduled Actions** — the agent actively executes instructions at the specified time and sends the result:
 
 > "Search Hacker News for AI articles at 9am and list them"
 > "Check the weather forecast for Berlin tomorrow at 7am and send me a summary"
