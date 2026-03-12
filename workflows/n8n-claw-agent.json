@@ -1004,7 +1004,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO conversations (session_id, user_id, role, content) VALUES ('{{ $json.sessionId }}', '{{ $json.userId }}', 'user', '{{ $json.userMessage.replace(/'/g, \"''\") }}'); INSERT INTO conversations (session_id, user_id, role, content) VALUES ('{{ $json.sessionId }}', '{{ $json.userId }}', 'assistant', '{{ $json.assistantMessage.replace(/'/g, \"''\") }}'); {{ $json.markSetupDone ? \"UPDATE user_profiles SET setup_done = true WHERE user_id = 'telegram:\" + $json.userId + \"';\" : '' }}",
+        "query": "INSERT INTO conversations (session_id, user_id, role, content) VALUES ('{{ $json.sessionId }}', '{{ $json.userId }}', 'user', '{{ $json.userMessage.replace(/'/g, \"''\").replace(/\\$/g, '$$') }}'); INSERT INTO conversations (session_id, user_id, role, content) VALUES ('{{ $json.sessionId }}', '{{ $json.userId }}', 'assistant', '{{ $json.assistantMessage.replace(/'/g, \"''\").replace(/\\$/g, '$$') }}'); {{ $json.markSetupDone ? \"UPDATE user_profiles SET setup_done = true WHERE user_id = 'telegram:\" + $json.userId + \"';\" : '' }}",
         "options": {
           "queryBatching": "independently"
         }
@@ -1027,7 +1027,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO memory_daily (date, content, role, user_id) VALUES (CURRENT_DATE, '{{ ($json.userMessage + ' → ' + $json.assistantMessage).replace(/'/g, \"''\") }}', 'interaction', '{{ $json.userId }}')",
+        "query": "INSERT INTO memory_daily (date, content, role, user_id) VALUES (CURRENT_DATE, '{{ ($json.userMessage + ' → ' + $json.assistantMessage).replace(/'/g, \"''\").replace(/\\$/g, '$$') }}', 'interaction', '{{ $json.userId }}')",
         "options": {
           "queryBatching": "independently"
         }
