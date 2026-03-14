@@ -15,6 +15,7 @@ Talk to your agent in natural language — it manages tasks, remembers context a
 - **Smart reminders** — timed Telegram reminders ("remind me in 2 hours to...")
 - **Scheduled actions** — the agent executes instructions at a set time ("search HN for AI news at 9am")
 - **Web search** — searches the web via built-in SearXNG instance (no API key needed)
+- **Web reader** — reads webpages as clean markdown via Crawl4AI (JS rendering, no boilerplate)
 - **Project memory** — persistent markdown documents for tracking ongoing work across conversations
 - **Extensible** — add new skills and capabilities through natural language or from the skill catalog
 
@@ -33,6 +34,7 @@ n8n-claw Agent (Claude Sonnet)
   ├── Reminder            — timed reminders + scheduled actions
   ├── HTTP Tool           — simple web requests
   ├── Web Search          — search the web (SearXNG)
+  ├── Web Reader          — read webpages as markdown (Crawl4AI)
   └── Self Modify         — inspect/list n8n workflows
 
 Background Workflows (automated):
@@ -47,7 +49,7 @@ Background Workflows (automated):
 
 ### What you need
 
-- A Linux VPS (Ubuntu 22.04/24.04 recommended, also tested with Debian 13, 2GB RAM and 12GB Disk minimum)
+- A Linux VPS (Ubuntu 22.04/24.04 recommended, also tested with Debian 13, 4GB RAM and 15GB Disk minimum)
 - A **Telegram Bot** — create one via [@BotFather](https://t.me/BotFather)
 - Your **Telegram Chat ID** — get it from [@userinfobot](https://t.me/userinfobot)
 - An **Anthropic API Key** — from [console.anthropic.com](https://console.anthropic.com)
@@ -226,7 +228,7 @@ For APIs not covered by the skill catalog, ask your agent to build one from scra
 > "Build me an MCP server for the OpenLibrary API — look up books by ISBN"
 
 The MCP Builder will:
-1. Search for API documentation automatically (via SearXNG + Jina Reader)
+1. Search for API documentation automatically (via SearXNG + Crawl4AI)
 2. Generate working tool code
 3. Deploy two new n8n workflows (MCP trigger + sub-workflow)
 4. Register the server in the database
@@ -518,6 +520,7 @@ Then restart: `docker compose up -d n8n`
 - **[Claude](https://anthropic.com)** (Anthropic) — LLM powering the agent
 - **Telegram** — messaging interface
 - **[SearXNG](https://docs.searxng.org)** — self-hosted meta search engine (no API key needed)
+- **[Crawl4AI](https://github.com/unclecode/crawl4ai)** — self-hosted web crawler, returns clean markdown (JS rendering)
 - **[Open-Meteo](https://open-meteo.com)** — free weather API (example MCP, no key needed)
 
 ---
