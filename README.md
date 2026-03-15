@@ -32,6 +32,9 @@ n8n-claw Agent (Claude Sonnet)
   ├── Library Manager     → install/remove skills from catalog
   ├── MCP Builder          → builds custom skills from scratch
   ├── Reminder            — timed reminders + scheduled actions
+  ├── Expert Agent        → delegates to specialized sub-agents
+  ├── Agent Library       → install/remove expert agents from catalog
+  ├── Telegram Status     — sends progress updates during long tasks
   ├── HTTP Tool           — simple web requests
   ├── Web Search          — search the web (SearXNG)
   ├── Web Reader          — read webpages as markdown (Crawl4AI)
@@ -97,20 +100,29 @@ The easiest way is to open each workflow and click **"Create new credential"** d
 
 | Credential | Name (exact!) | Where needed |
 |---|---|---|
-| Postgres | `Supabase Postgres` | Agent (Load Soul, Load History, etc.) |
-| Anthropic API | `Anthropic API` | Agent (Claude node), MCP Builder |
+| Postgres | `Supabase Postgres` | Agent, Sub-Agent Runner |
+| Anthropic API | `Anthropic API` | Agent (Claude node), MCP Builder, Sub-Agent Runner |
 | Telegram Bot | `Telegram Bot` | Agent (Telegram Trigger + Reply) — *created automatically by setup* |
 | OpenAI API | `OpenAI API` | Agent (Voice transcription via Whisper) — *optional, created by setup if key provided* |
+
+**⚠️ After fresh install — connect credentials in these workflows:**
+
+| Workflow | Credentials to connect |
+|---|---|
+| 🤖 n8n-claw Agent | Postgres, Anthropic API, OpenAI API (optional) |
+| 🏗️ MCP Builder | Anthropic API (select on LLM node) |
+| 🧠 Sub-Agent Runner | Postgres, Anthropic API |
+
+**⚠️ After update (`./setup.sh`)** — credentials persist in the Agent and MCP Builder, but must be re-selected in:
+
+| Workflow | Credentials to re-connect |
+|---|---|
+| 🧠 Sub-Agent Runner | Postgres, Anthropic API |
 
 **Postgres connection details** *(shown in setup output)*:
 - Host: `db` | Port: `5432` | DB: `postgres` | User: `postgres`
 - Password: *(shown at end of setup)*
 - SSL: `disable`
-
-**MCP Builder — select LLM model:**
-- Open the MCP Builder workflow → click the LLM node
-- Select `Anthropic API` as the chat model
-- *(not set automatically due to n8n credential linking)*
 
 **Optional: Embeddings for semantic memory search:**
 
@@ -151,6 +163,8 @@ Sub-workflows (called by other workflows, no manual activation needed):
 |---|---|
 | 🔌 MCP Client | Agent — calls tools on MCP skill servers |
 | 📚 MCP Library Manager | Agent — installs/removes skills from catalog |
+| 🧠 Sub-Agent Runner | Agent — runs expert agents with loaded personas |
+| 📖 Agent Library Manager | Agent — installs/removes expert agents |
 | ⏰ ReminderFactory | Agent — saves reminders/tasks to database |
 | 🔐 credential-form | Library Manager — secure form for entering API keys |
 
