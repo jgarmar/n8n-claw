@@ -179,6 +179,33 @@ The agent can delegate specialized tasks to expert sub-agents. The main agent's 
 
 ---
 
+## Embedded Repos (n8n-claw-agents, n8n-claw-templates)
+
+`n8n-claw-agents/` and `../n8n-claw-templates/` are **separate Git repositories** with their own remotes, NOT part of the n8n-claw repo. They are embedded as subdirectories (n8n-claw-agents inside n8n-claw, n8n-claw-templates as sibling).
+
+**How to commit and push changes:**
+
+```bash
+# n8n-claw-agents — lives INSIDE n8n-claw as subdirectory
+cd n8n-claw/n8n-claw-agents/
+git add <files>
+git commit -m "message"
+git push origin master          # default branch: master
+
+# n8n-claw-templates — lives as SIBLING directory
+cd ../n8n-claw-templates/
+git add <files>
+git commit -m "message"
+git push origin master          # default branch: master
+```
+
+**IMPORTANT:**
+- NEVER commit these subdirectory changes via the parent n8n-claw repo — always `cd` into the subdirectory and use its own git context
+- Both repos use `master` as default branch (not `main`)
+- Both are served via jsDelivr CDN — pin to commit hashes in production
+
+---
+
 ## dmo-claw — Tourism Fork
 
 [`dmo-claw`](https://github.com/freddy-schuetz/dmo-claw/) is a separate fork of n8n-claw built for tourism DMOs (Destination Management Organizations). Key differences:
