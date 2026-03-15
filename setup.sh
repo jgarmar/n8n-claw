@@ -801,6 +801,16 @@ if [ -n "$REMINDER_RUNNER_ID" ]; then
   echo -e "  ${GREEN}✅ Reminder Runner workflow activated${NC}"
 fi
 
+# Activate sub-workflows (required since n8n 2.x)
+for SUB_WF in mcp-client mcp-builder mcp-library-manager agent-library-manager sub-agent-runner workflow-builder reminder-factory project-manager; do
+  SUB_WF_ID=${WF_IDS[$SUB_WF]}
+  if [ -n "$SUB_WF_ID" ]; then
+    curl -s -X POST "${N8N_BASE}/api/v1/workflows/${SUB_WF_ID}/activate" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
+  fi
+done
+echo -e "  ${GREEN}✅ Sub-workflows activated${NC}"
+
 # Helper for interactive prompts (used by both update and fresh install)
 cli_ask() {
   local prompt="$1" default="$2"
