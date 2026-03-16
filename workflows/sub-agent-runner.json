@@ -230,7 +230,7 @@
       "position": [1088, 240],
       "parameters": {
         "description": "Search the web for information. Input: a search query string.",
-        "jsCode": "const searchQuery = typeof query === 'string' ? query : (query.query || query.q || JSON.stringify(query));\ntry {\n  const resp = await helpers.httpRequest({\n    method: 'GET',\n    url: `https://api.duckduckgo.com/?q=${encodeURIComponent(searchQuery)}&format=json&no_html=1&skip_disambig=1`,\n    json: true\n  });\n  const results = [];\n  if (resp.Abstract) results.push(`Summary: ${resp.Abstract} (${resp.AbstractURL})`);\n  if (resp.RelatedTopics) {\n    for (const t of resp.RelatedTopics.slice(0, 5)) {\n      if (t.Text) results.push(`- ${t.Text} ${t.FirstURL || ''}`);\n    }\n  }\n  return results.length > 0 ? results.join('\\n') : 'No results found for: ' + searchQuery;\n} catch(e) {\n  return 'Search error: ' + e.message;\n}",
+        "jsCode": "let input;\ntry { input = JSON.parse(query); } catch(e) { input = { q: query }; }\nconst q = input.q || input.query || query;\nconst result = await helpers.httpRequest({\n  method: 'GET',\n  url: `http://searxng:8080/search?q=${encodeURIComponent(q)}&format=json&language=de`,\n  headers: { 'Accept': 'application/json' }\n});\nconst hits = (result.results || []).slice(0, 5).map(r =>\n  `${r.title}\\n${r.url}\\n${r.content || ''}`\n).join('\\n\\n');\nreturn hits || 'Keine Ergebnisse gefunden.';",
         "specifyInputSchema": false
       }
     },
