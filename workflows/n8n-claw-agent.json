@@ -835,7 +835,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json;\nconst message = raw.message || '';\nconst chatId = String(raw.chat_id || '');\n// Strip 'telegram:' prefix if present to get raw numeric ID\nconst userId = String(raw.user_id || '').replace('telegram:', '');\nconst source = 'scheduled_task';\n\nreturn [{ json: { userMessage: message, chatId, userId, source } }];"
+        "jsCode": "const raw = $input.first().json;\nconst message = raw.message || '';\nconst chatId = String(raw.chat_id || '');\n// Strip 'telegram:' prefix if present to get raw numeric ID\nconst userId = String(raw.user_id || '').replace('telegram:', '');\nconst source = raw.source || 'scheduled_task';\n\nreturn [{ json: { userMessage: message, chatId, userId, source } }];"
       },
       "id": "format-task-input",
       "name": "Format Task Input",
@@ -1226,7 +1226,7 @@
     },
     {
       "parameters": {
-        "description": "Set a timed reminder or scheduled task. Two modes:\\n- Reminder (type='reminder'): sends a Telegram message at the given time. Use for 'remind me at/in...'.\\n- Task (type='task'): the agent executes the instructions at the given time and sends the result. Use for 'do X at Y o'clock', 'fetch/search/summarize X at Y'.\\nInput: time (ISO 8601), message (text describing reminder or task instructions), type ('reminder' or 'task', default 'reminder').",
+        "description": "Set a timed reminder, scheduled task, or recurring action. Modes:\\n- Reminder (type='reminder'): sends a Telegram message at the given time. Use for 'remind me at/in...'.\\n- Task (type='task'): the agent executes the instructions once at the given time and sends the result. Use for 'do X at Y o'clock'.\\n- Recurring (type='recurring'): creates a repeating scheduled action. The agent executes the instructions on the given schedule and sends results. Extra fields: name (label), instruction (what to do), schedule (object), action_type ('agent_task' or 'briefing', default 'agent_task'), timezone (default 'Europe/Berlin'). Schedule formats: {\"type\":\"interval\",\"minutes\":30} or {\"type\":\"daily\",\"time\":\"08:00\"} or {\"type\":\"weekly\",\"days\":[1,5],\"time\":\"09:00\"} (1=Mon..7=Sun).\\n- Management: action='list' (show all scheduled actions), action='enable'/'disable'/'delete' with target_id (ID of the action to manage).\\nInput for reminder/task: time (ISO 8601), message (text), type. Input for recurring: see above. Input for management: action, target_id.",
         "workflowId": {
           "__rl": true,
           "value": "REPLACE_REMINDER_FACTORY_ID",

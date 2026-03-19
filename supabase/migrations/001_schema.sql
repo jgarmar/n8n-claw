@@ -1124,6 +1124,64 @@ END $$;
 
 
 --
+-- Name: scheduled_actions; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE IF NOT EXISTS public.scheduled_actions (
+    id integer NOT NULL,
+    user_id text NOT NULL,
+    chat_id text NOT NULL,
+    name text NOT NULL,
+    action_type text NOT NULL DEFAULT 'agent_task',
+    instruction text NOT NULL,
+    schedule jsonb NOT NULL,
+    timezone text DEFAULT 'Europe/Berlin',
+    enabled boolean DEFAULT true,
+    last_run timestamp with time zone,
+    next_run timestamp with time zone,
+    run_count integer DEFAULT 0,
+    max_runs integer,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.scheduled_actions OWNER TO postgres;
+
+CREATE SEQUENCE IF NOT EXISTS public.scheduled_actions_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER TABLE public.scheduled_actions_id_seq OWNER TO postgres;
+
+ALTER SEQUENCE public.scheduled_actions_id_seq OWNED BY public.scheduled_actions.id;
+
+ALTER TABLE ONLY public.scheduled_actions ALTER COLUMN id SET DEFAULT nextval('public.scheduled_actions_id_seq'::regclass);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'scheduled_actions_pkey') THEN
+    ALTER TABLE ONLY public.scheduled_actions ADD CONSTRAINT scheduled_actions_pkey PRIMARY KEY (id);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_scheduled_actions_due ON public.scheduled_actions (next_run) WHERE enabled = true;
+CREATE INDEX IF NOT EXISTS idx_scheduled_actions_user ON public.scheduled_actions (user_id);
+
+GRANT ALL ON TABLE public.scheduled_actions TO anon;
+GRANT ALL ON TABLE public.scheduled_actions TO authenticated;
+GRANT ALL ON TABLE public.scheduled_actions TO service_role;
+
+GRANT ALL ON SEQUENCE public.scheduled_actions_id_seq TO anon;
+GRANT ALL ON SEQUENCE public.scheduled_actions_id_seq TO authenticated;
+GRANT ALL ON SEQUENCE public.scheduled_actions_id_seq TO service_role;
+
+
+--
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
 --
 

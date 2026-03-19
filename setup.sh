@@ -759,6 +759,32 @@ print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'set
     echo "  ✅ Reminder Runner → Agent: ${AGENT_WF_ID_FOR_RUNNER}"
   fi
 fi
+# ── 11c. Patch Agent workflow ID in Heartbeat ──────────────────
+HEARTBEAT_WF_ID=${WF_IDS['heartbeat']}
+AGENT_WF_ID_FOR_HB=${WF_IDS['n8n-claw-agent']}
+if [ -n "$HEARTBEAT_WF_ID" ] && [ -n "$AGENT_WF_ID_FOR_HB" ]; then
+  HB_JSON=$(curl -s "${N8N_BASE}/api/v1/workflows/${HEARTBEAT_WF_ID}" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}")
+
+  PATCHED_HB=$(echo "$HB_JSON" | python3 -c "
+import sys, json
+ALLOWED = set('${N8N_SETTINGS_WHITELIST}'.split(','))
+raw = sys.stdin.read()
+raw = raw.replace('REPLACE_AGENT_WORKFLOW_ID', '${AGENT_WF_ID_FOR_HB}')
+wf = json.loads(raw)
+nodes = wf.get('nodes') or wf.get('activeVersion',{}).get('nodes',[])
+conns = wf.get('connections') or wf.get('activeVersion',{}).get('connections',{})
+settings = {k: v for k, v in wf.get('settings',{}).items() if k in ALLOWED}
+print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'settings': settings}))
+" 2>/dev/null)
+
+  if [ -n "$PATCHED_HB" ]; then
+    echo "$PATCHED_HB" | curl -s -X PUT "${N8N_BASE}/api/v1/workflows/${HEARTBEAT_WF_ID}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+      -H "Content-Type: application/json" -d @- > /dev/null
+    echo "  ✅ Heartbeat → Agent: ${AGENT_WF_ID_FOR_HB}"
+  fi
+fi
 
 fi  # end INSTALL_MODE guard for workflows
 
@@ -1344,6 +1370,24 @@ if [ -n "$PROACTIVE_CHOICE" ]; then
 else
   echo -e "  ${GREEN}✅ Heartbeat config seeded${NC}"
 fi
+
+# ── Seed scheduled_actions (Morning Briefing as default) ──────
+echo -e "${CYAN}Seeding scheduled actions...${NC}"
+PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
+INSERT INTO public.scheduled_actions (user_id, chat_id, name, action_type, instruction, schedule, timezone, enabled)
+VALUES (
+  'telegram:${TELEGRAM_CHAT_ID}',
+  '${TELEGRAM_CHAT_ID}',
+  'Morning Briefing',
+  'briefing',
+  'Give me a morning briefing: summarize my pending and overdue tasks, any upcoming deadlines, and a motivating note for the day.',
+  '{\"type\": \"daily\", \"time\": \"08:00\"}',
+  'Europe/Berlin',
+  false
+)
+ON CONFLICT DO NOTHING;
+" 2>/dev/null
+echo -e "  ${GREEN}✅ Scheduled actions seeded (Morning Briefing disabled by default)${NC}"
 
 # ── Seed expert agents ────────────────────────────────────────
 echo -e "${CYAN}Seeding expert agents...${NC}"
