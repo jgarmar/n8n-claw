@@ -1074,22 +1074,6 @@ if [ "$INSTALL_MODE" = "update" ] && [ "$FORCE_FLAG" != "--force" ] && [ -z "${E
       echo -e "  ⏭️  Skipped — voice messages disabled"
     fi
   fi
-  # Paperclip integration (optional)
-  echo ""
-  read -rp "  🧷 Connect Paperclip agent orchestration? (y/N): " PAPERCLIP_ENABLE
-  if [[ "$PAPERCLIP_ENABLE" =~ ^[Yy]$ ]]; then
-    read -rp "  Paperclip internal URL [http://paperclip:3100]: " PAPERCLIP_INTERNAL_URL_INPUT
-    PAPERCLIP_INTERNAL_URL="${PAPERCLIP_INTERNAL_URL_INPUT:-http://paperclip:3100}"
-    set_env PAPERCLIP_INTERNAL_URL "$PAPERCLIP_INTERNAL_URL"
-    read -rp "  Paperclip Agent API Key: " PAPERCLIP_AGENT_KEY_INPUT
-    if [ -n "$PAPERCLIP_AGENT_KEY_INPUT" ]; then
-      PAPERCLIP_AGENT_KEY="$PAPERCLIP_AGENT_KEY_INPUT"
-      set_env PAPERCLIP_AGENT_KEY "$PAPERCLIP_AGENT_KEY"
-      echo -e "  ${GREEN}✅ Paperclip integration configured${NC}"
-    else
-      echo -e "  ⏭️  Skipped — no API key provided"
-    fi
-  fi
   # Write anthropic key to DB in update mode too
   if [ -n "$ANTHROPIC_API_KEY" ] && [[ "$ANTHROPIC_API_KEY" != "your_"* ]]; then
     LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
@@ -1278,20 +1262,22 @@ fi
 
 fi # end SKIP_EMBEDDING
 
-# Paperclip integration (optional)
-echo ""
-read -rp "🧷 Connect Paperclip agent orchestration? (y/N): " PAPERCLIP_ENABLE
-if [[ "$PAPERCLIP_ENABLE" =~ ^[Yy]$ ]]; then
-  read -rp "  Paperclip internal URL [http://paperclip:3100]: " PAPERCLIP_INTERNAL_URL_INPUT
-  PAPERCLIP_INTERNAL_URL="${PAPERCLIP_INTERNAL_URL_INPUT:-http://paperclip:3100}"
-  set_env PAPERCLIP_INTERNAL_URL "$PAPERCLIP_INTERNAL_URL"
-  read -rp "  Paperclip Agent API Key: " PAPERCLIP_AGENT_KEY_INPUT
-  if [ -n "$PAPERCLIP_AGENT_KEY_INPUT" ]; then
-    PAPERCLIP_AGENT_KEY="$PAPERCLIP_AGENT_KEY_INPUT"
-    set_env PAPERCLIP_AGENT_KEY "$PAPERCLIP_AGENT_KEY"
-    echo -e "${GREEN}✅ Paperclip integration configured${NC}"
-  else
-    echo -e "⏭️  Skipped — no API key provided"
+# Paperclip integration (optional) — only in fresh install or --force
+if [ "$INSTALL_MODE" != "update" ] || [ "$FORCE_FLAG" = "--force" ]; then
+  echo ""
+  read -rp "🧷 Connect Paperclip agent orchestration? (y/N): " PAPERCLIP_ENABLE
+  if [[ "$PAPERCLIP_ENABLE" =~ ^[Yy]$ ]]; then
+    read -rp "  Paperclip internal URL [http://paperclip:3100]: " PAPERCLIP_INTERNAL_URL_INPUT
+    PAPERCLIP_INTERNAL_URL="${PAPERCLIP_INTERNAL_URL_INPUT:-http://paperclip:3100}"
+    set_env PAPERCLIP_INTERNAL_URL "$PAPERCLIP_INTERNAL_URL"
+    read -rp "  Paperclip Agent API Key: " PAPERCLIP_AGENT_KEY_INPUT
+    if [ -n "$PAPERCLIP_AGENT_KEY_INPUT" ]; then
+      PAPERCLIP_AGENT_KEY="$PAPERCLIP_AGENT_KEY_INPUT"
+      set_env PAPERCLIP_AGENT_KEY "$PAPERCLIP_AGENT_KEY"
+      echo -e "${GREEN}✅ Paperclip integration configured${NC}"
+    else
+      echo -e "⏭️  Skipped — no API key provided"
+    fi
   fi
 fi
 
