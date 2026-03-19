@@ -558,6 +558,21 @@
         -500,
         200
       ]
+    },
+    {
+      "parameters": {
+        "content": "## Paperclip Setup\n\nPaperclip payloads are auto-detected — no extra trigger needed.\n\n1. Deploy Paperclip on same server/network\n2. Create Agent with `http` adapter pointing to `/webhook/adapter`\n3. Set `X-API-Key` header to your `WEBHOOK_SECRET`\n4. Generate an Agent API Key in Paperclip\n5. Set `{{PAPERCLIP_INTERNAL_URL}}` and `{{PAPERCLIP_AGENT_KEY}}` placeholders\n\n**Response flow:**\nAgent response → Comment on Issue → Issue set to Done",
+        "width": 300,
+        "height": 260
+      },
+      "id": "sticky-paperclip-setup",
+      "name": "Paperclip Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        480
+      ]
     }
   ]
 }

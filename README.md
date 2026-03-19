@@ -286,7 +286,7 @@ The adapter ships with three triggers:
 | **Slack Trigger** | Disabled | Slack workspace integration |
 | **Teams Trigger** | Disabled | Microsoft Teams integration |
 
-Each trigger has a mapper node that normalizes messages → calls `/webhook/agent` → routes the response back to the right system via `metadata._responseChannel`.
+Each trigger has a mapper node that normalizes messages → calls `/webhook/agent` → routes the response back to the right system via `metadata._responseChannel`. Paperclip payloads are auto-detected and get a dedicated response branch that posts the agent's answer as a comment and marks the issue as done.
 
 ### Enabling Slack
 
@@ -310,6 +310,39 @@ Each trigger has a mapper node that normalizes messages → calls `/webhook/agen
 4. **In n8n**: Create a Microsoft Teams OAuth2 credential
 5. **Enable the Teams Trigger + Teams Reply** nodes in the Webhook Adapter workflow
 6. **Activate the Webhook Adapter** workflow
+
+### Enabling Paperclip
+
+[Paperclip](https://github.com/paperclipai/paperclip) is an open-source agent orchestration platform. n8n-claw works as a Paperclip agent out of the box — no extra configuration in n8n needed.
+
+The adapter auto-detects Paperclip's payload format (`runId` + `context`), fetches the issue title and description via the Paperclip API, and after the agent responds:
+- Posts the response as a **comment** on the Paperclip issue
+- Sets the issue status to **done**
+
+**Setup in Paperclip:**
+
+1. **Deploy Paperclip** on the same server or network as n8n-claw
+2. **Create a Company** and an **Agent** with `http` adapter type
+3. **Configure the agent's HTTP adapter:**
+   ```json
+   {
+     "url": "https://YOUR-DOMAIN/webhook/adapter",
+     "method": "POST",
+     "headers": {
+       "X-API-Key": "YOUR_WEBHOOK_SECRET"
+     },
+     "payloadTemplate": {
+       "source": "paperclip"
+     }
+   }
+   ```
+4. **Generate an Agent API Key** in Paperclip (used by n8n-claw to post comments back)
+5. **Add placeholders to `.env`** (or hardcode in the workflow):
+   - `PAPERCLIP_INTERNAL_URL` — Paperclip's internal URL (e.g. `http://paperclip:3100` if on same Docker network)
+   - `PAPERCLIP_AGENT_KEY` — the agent API key from step 4
+6. **Create an issue** in Paperclip and assign it to the agent — the heartbeat will trigger the workflow automatically
+
+> **Docker networking:** If Paperclip runs on the same server, connect it to n8n-claw's Docker network (`n8n-claw_n8n-claw-net`) and use the container DNS name (`paperclip:3100`) instead of `localhost`.
 
 ### Adding a Custom Integration
 
