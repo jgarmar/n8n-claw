@@ -14,7 +14,8 @@ Talk to your agent in natural language — it manages tasks, remembers context a
 - **Long-term memory** — remembers conversations and important context with optional semantic search (RAG)
 - **Task management** — create, track, and complete tasks with priorities and due dates
 - **Proactive heartbeat** — automatically reminds you of overdue/urgent tasks
-- **Morning briefing** — daily summary of your tasks at a time you choose
+- **Recurring actions** — repeating tasks on any schedule ("check my emails every 15 minutes", "daily briefing at 8am")
+- **Smart background checks** — monitoring tasks only notify you when something new is found
 - **Expert agents** — delegate complex tasks to specialized sub-agents (3 included, expandable from catalog)
 - **MCP Skills** — install pre-built skills or build new API integrations on demand
 - **Smart reminders** — timed Telegram reminders ("remind me in 2 hours to...")
@@ -46,9 +47,10 @@ n8n-claw Agent (Claude Sonnet)
   └── Self Modify         — inspect/list n8n workflows
 
 Background Workflows (automated):
-  💓 Heartbeat              — every 15 min: proactive reminders + morning briefing
+  💓 Heartbeat              — every 5 min: recurring actions + proactive reminders
+  🔍 Background Checker     — silent checks: only notifies when something new is found
   🧠 Memory Consolidation   — daily at 3am: summarizes conversations → long-term memory
-  ⏰ Reminder Runner         — every 1 min: sends due reminders + triggers scheduled actions
+  ⏰ Reminder Runner         — every 1 min: sends due reminders + triggers one-time actions
 ```
 
 ---
@@ -150,9 +152,10 @@ These workflows are **activated automatically** by setup — no action needed:
 | Workflow | Purpose |
 |---|---|
 | 🤖 n8n-claw Agent | Main agent — receives Telegram messages, calls tools |
-| 💓 Heartbeat | Background: proactive reminders + morning briefing (every 15 min) |
+| 💓 Heartbeat | Background: recurring actions + proactive reminders (every 5 min) |
+| 🔍 Background Checker | Sub-workflow: silent background checks, only notifies on changes |
 | 🧠 Memory Consolidation | Background: summarizes conversations into long-term memory (daily 3am) |
-| ⏰ Reminder Runner | Background: delivers reminders + triggers scheduled actions (every 1 min) |
+| ⏰ Reminder Runner | Background: delivers reminders + triggers one-time actions (every 1 min) |
 
 These workflows need to be **activated manually** in n8n UI:
 
@@ -366,7 +369,7 @@ Tasks support priorities (`low`, `medium`, `high`, `urgent`), due dates, and sub
 
 ## Reminders & Scheduled Actions
 
-The agent supports two types of timed actions:
+The agent supports three types of timed actions:
 
 **Reminders** — sends a Telegram message at the specified time:
 
@@ -379,7 +382,19 @@ The agent supports two types of timed actions:
 > "Search Hacker News for AI articles at 9am and list them"
 > "Check the weather forecast for Berlin tomorrow at 7am and send me a summary"
 
-Both are stored in the database and delivered by the **Reminder Runner** — a background workflow that polls every minute. Missed reminders (e.g. if n8n was briefly down) are automatically delivered on the next run.
+**Recurring Actions** — repeating scheduled actions on an interval, daily, or weekly schedule:
+
+> "Check my emails every 15 minutes"
+> "Give me a daily briefing every morning at 8am"
+> "Every Monday and Friday at 9am, summarize the latest AI news"
+
+Recurring actions are managed via natural language — list, pause, resume, or delete them:
+
+> "Show my scheduled actions"
+> "Pause the mail check"
+> "Delete action 2"
+
+Reminders and one-time scheduled actions are delivered by the **Reminder Runner** (polls every minute). Recurring actions are executed by the **Heartbeat** (runs every 5 minutes). Missed reminders are automatically delivered on the next run.
 
 ---
 
@@ -403,23 +418,47 @@ The agent understands more than just text — send voice messages, photos, docum
 
 ---
 
-## Heartbeat & Morning Briefing
+## Heartbeat & Scheduled Actions
 
-The Heartbeat is a background workflow that runs every 15 minutes. It checks for overdue or urgent tasks and sends you a short Telegram reminder — without you having to ask.
+The Heartbeat is a background workflow that runs every 5 minutes. It executes recurring scheduled actions and delivers proactive reminders.
 
-**Proactive reminders** are enabled automatically if you chose "Proactive" during setup. You can also toggle them via chat:
+### Recurring Actions
+
+When you create a recurring action, the agent decides how it should notify you:
+
+- **`always`** — always sends the result (e.g. morning briefings, reports). The main agent executes the task with full personality, conversation history, and all tools.
+- **`on_change`** — only notifies when something new is found (e.g. email monitoring, price tracking). A lightweight **Background Checker** executes the task silently and only sends a Telegram message when there's actually something to report.
+
+The agent picks the right mode automatically based on your request:
+
+> "Give me a daily briefing at 8am" → `always` (you always want the briefing)
+> "Check my emails every 15 minutes" → `on_change` (only notify on new emails)
+
+### How it works
+
+```
+Heartbeat (every 5 min)
+  → Load due actions from DB
+  → For each action, check notify_mode:
+
+    'always' (e.g. briefing):
+      → Main Agent executes task → always sends Telegram
+
+    'on_change' (e.g. mail check):
+      → Background Checker executes task
+      → Something new? → sends Telegram
+      → Nothing new?   → stays silent
+```
+
+The Background Checker is a lightweight sub-workflow with Claude + tools (MCP skills, web search, HTTP requests, web reader) but without personality or conversation history — fast and cost-efficient.
+
+### Proactive Reminders
+
+The Heartbeat also checks for overdue or urgent tasks and sends you a short Telegram reminder — without you having to ask.
 
 > "Enable the heartbeat" / "Disable proactive messages"
 
 Rate-limited to one message every 2 hours (configurable) — no spam.
-
-**Morning Briefing** sends you a daily summary at your chosen time:
-
-> "Enable morning briefing at 8am"
-> "Set morning briefing to 7:30"
-> "Disable morning briefing"
-
-The briefing includes: overdue tasks, today's tasks, and a short motivating note — in your preferred language.
 
 ---
 
@@ -434,7 +473,8 @@ Edit the `soul` and `agents` tables directly in Supabase Studio (`http://localho
 | `user_profiles` | User name, timezone, preferences (language, morning briefing) |
 | `tasks` | Task management (title, status, priority, due date, subtasks) |
 | `projects` | Project documents (name, status, markdown content) |
-| `reminders` | Scheduled reminders + tasks (message, time, type, delivery status) |
+| `reminders` | Scheduled reminders + one-time tasks (message, time, type, delivery status) |
+| `scheduled_actions` | Recurring actions (schedule, instruction, notify_mode, next_run) |
 | `heartbeat_config` | Heartbeat + morning briefing settings (enabled, last_run, intervals) |
 | `tools_config` | API keys for Anthropic, embedding provider — used by Heartbeat + Consolidation |
 | `mcp_registry` | Available MCP servers (name, URL, tools) |

@@ -231,7 +231,7 @@
       "id": "exec-bg-checker",
       "name": "Execute Background Checker",
       "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
+      "typeVersion": 1.3,
       "position": [1100, -120]
     },
     {
@@ -268,7 +268,7 @@
       "id": "exec-agent",
       "name": "Execute Agent",
       "type": "n8n-nodes-base.executeWorkflow",
-      "typeVersion": 1.2,
+      "typeVersion": 1.3,
       "position": [1100, 120]
     },
     {
