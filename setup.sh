@@ -585,7 +585,6 @@ for f in workflows/*.json; do
     -e "s|{{SUPABASE_SERVICE_KEY}}|${SUPABASE_SERVICE_KEY}|g" \
     -e "s|{{SUPABASE_ANON_KEY}}|${SUPABASE_ANON_KEY}|g" \
     -e "s|{{TELEGRAM_CHAT_ID}}|${TELEGRAM_CHAT_ID}|g" \
-    -e "s|{{TELEGRAM_BOT_TOKEN}}|${TELEGRAM_BOT_TOKEN}|g" \
     -e "s|{{CREDENTIAL_FORM_WEBHOOK_ID}}|${CREDENTIAL_FORM_WEBHOOK_ID}|g" \
     "$out"
   # Credential ID replacements — only if IDs are actually set
@@ -785,6 +784,42 @@ print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'set
       -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
       -H "Content-Type: application/json" -d @- > /dev/null
     echo "  ✅ Heartbeat → Agent: ${AGENT_WF_ID_FOR_HB}"
+  fi
+fi
+# ── 11d. Patch Anthropic credential in Background Checker ──────────
+BG_CHECKER_WF_ID=${WF_IDS['background-checker']}
+if [ -n "$BG_CHECKER_WF_ID" ]; then
+  # Fetch real Anthropic credential ID
+  CRED_LIST_BG=$(curl -s "${N8N_BASE}/api/v1/credentials" -H "X-N8N-API-KEY: ${N8N_API_KEY}")
+  REAL_ANTHROPIC_BG=$(echo "$CRED_LIST_BG" | python3 -c "
+import sys,json
+creds=json.load(sys.stdin).get('data',[])
+for c in creds:
+    if c.get('type')=='anthropicApi': print(c['id']); break
+" 2>/dev/null)
+
+  if [ -n "$REAL_ANTHROPIC_BG" ]; then
+    BG_JSON=$(curl -s "${N8N_BASE}/api/v1/workflows/${BG_CHECKER_WF_ID}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}")
+
+    PATCHED_BG=$(echo "$BG_JSON" | python3 -c "
+import sys, json
+ALLOWED = set('${N8N_SETTINGS_WHITELIST}'.split(','))
+raw = sys.stdin.read()
+raw = raw.replace('REPLACE_WITH_YOUR_CREDENTIAL_ID\", \"name\": \"Anthropic API\"', '${REAL_ANTHROPIC_BG}\", \"name\": \"Anthropic API\"')
+wf = json.loads(raw)
+nodes = wf.get('nodes') or wf.get('activeVersion',{}).get('nodes',[])
+conns = wf.get('connections') or wf.get('activeVersion',{}).get('connections',{})
+settings = {k: v for k, v in wf.get('settings',{}).items() if k in ALLOWED}
+print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'settings': settings}))
+" 2>/dev/null)
+
+    if [ -n "$PATCHED_BG" ]; then
+      echo "$PATCHED_BG" | curl -s -X PUT "${N8N_BASE}/api/v1/workflows/${BG_CHECKER_WF_ID}" \
+        -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+        -H "Content-Type: application/json" -d @- > /dev/null
+      echo "  ✅ Background Checker → Anthropic: ${REAL_ANTHROPIC_BG}"
+    fi
   fi
 fi
 
