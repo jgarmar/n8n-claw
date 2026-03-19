@@ -893,14 +893,6 @@ if [ -n "$AGENT_ID" ]; then
   done
 fi
 
-# Activate Heartbeat (disabled by default — schedule trigger runs but exits early if heartbeat_config.enabled=false)
-HEARTBEAT_ID=${WF_IDS['heartbeat']}
-if [ -n "$HEARTBEAT_ID" ]; then
-  curl -s -X POST "${N8N_BASE}/api/v1/workflows/${HEARTBEAT_ID}/activate" \
-    -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
-  echo -e "  ${GREEN}✅ Heartbeat workflow activated (heartbeat checks disabled by default — enable via agent)${NC}"
-fi
-
 # Activate Memory Consolidation
 CONSOLID_ID=${WF_IDS['memory-consolidation']}
 if [ -n "$CONSOLID_ID" ]; then
@@ -934,6 +926,14 @@ for SUB_WF in mcp-client mcp-builder mcp-library-manager agent-library-manager s
   fi
 done
 echo -e "  ${GREEN}✅ Sub-workflows activated${NC}"
+
+# Activate Heartbeat AFTER sub-workflows (heartbeat references background-checker)
+HEARTBEAT_ID=${WF_IDS['heartbeat']}
+if [ -n "$HEARTBEAT_ID" ]; then
+  curl -s -X POST "${N8N_BASE}/api/v1/workflows/${HEARTBEAT_ID}/activate" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
+  echo -e "  ${GREEN}✅ Heartbeat workflow activated${NC}"
+fi
 
 # Helper for interactive prompts (used by both update and fresh install)
 cli_ask() {
