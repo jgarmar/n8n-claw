@@ -187,7 +187,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Map Slack event to n8n-claw Agent format\n// n8n Slack Trigger outputs flat: { type, text, user, channel, ts, ... }\nreturn [{ json: {\n  message: $json.text || '',\n  user_id: $json.user || 'unknown',\n  session_id: `slack:${$json.channel}`,\n  source: 'slack',\n  metadata: {\n    _responseChannel: 'slack',\n    channelId: $json.channel,\n    threadTs: $json.thread_ts || $json.ts\n  }\n} }];"
+        "jsCode": "// Map Slack event to n8n-claw Agent format\n// n8n Slack Trigger outputs flat: { type, text, user, channel, ts, ... }\n\n// Skip bot messages to prevent feedback loops\nif ($json.bot_id || $json.subtype === 'bot_message' || $json.subtype === 'channel_join') {\n  return [];\n}\n\nreturn [{ json: {\n  message: $json.text || '',\n  user_id: $json.user || 'unknown',\n  session_id: `slack:${$json.channel}`,\n  source: 'slack',\n  metadata: {\n    _responseChannel: 'slack',\n    channelId: $json.channel,\n    threadTs: $json.thread_ts || $json.ts\n  }\n} }];"
       },
       "id": "map-slack-input",
       "name": "Map Slack Input",
@@ -351,7 +351,9 @@
           "value": "={{ $json.metadata?.channelId }}"
         },
         "text": "={{ $json.response }}",
-        "otherOptions": {}
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
       },
       "id": "slack-reply",
       "name": "Slack Reply",
