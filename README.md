@@ -102,6 +102,8 @@ Background Workflows (automated):
 
 ## Installation
 
+> **Want to run locally instead of on a VPS?** See the [Local Setup Guide](LOCAL_SETUP.md) for Docker + ngrok instructions (contributed by [@salvodmt](https://github.com/salvodmt), tested on Debian 13).
+
 ### What you need
 
 - A Linux VPS (Ubuntu 22.04/24.04 recommended, also tested with Debian 13, 4GB RAM and 15GB Disk minimum)
