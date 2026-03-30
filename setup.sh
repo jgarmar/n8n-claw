@@ -1439,7 +1439,6 @@ When the user asks about available skills, ALWAYS use this tool with list_templa
 ## MCP Builder (mcp_builder tool)
 Build custom skills from scratch for APIs not in the catalog.
 Parameter: task (description of what the skill should do)
-NOTE: After build, manually deactivate + activate in n8n UI (webhook bug).
 
 ## Available MCP Skills
 Loaded dynamically from the mcp_registry table at runtime.

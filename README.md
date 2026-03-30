@@ -447,8 +447,6 @@ Install pre-built skills from the [skill catalog](https://github.com/freddy-schu
 
 The Library Manager fetches skill templates from GitHub, imports the workflows into n8n, and registers the new MCP server automatically.
 
-> After installing a skill: **deactivate → reactivate** the new MCP workflow in n8n UI (required due to a webhook registration bug in n8n).
-
 **Available skills:**
 
 | Skill | Category | Description |
@@ -656,8 +654,6 @@ The MCP Builder will:
 3. Deploy two new n8n workflows (MCP trigger + sub-workflow)
 4. Register the server in the database
 5. Update the agent so it knows about the new tool
-
-> After each MCP build: **deactivate → reactivate** the new MCP workflow in n8n UI (same webhook bug as skill install).
 
 </details>
 
