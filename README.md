@@ -792,8 +792,8 @@ Recurring actions are managed via natural language — list, pause, resume, or d
 One-time reminders can also be listed, edited, and deleted:
 
 > "Show my reminders"
-> "Move reminder 38 to Monday at 10am"
-> "Delete reminder 41"
+> "Move the workshop reminder to Monday at 10am"
+> "Delete the car rental reminder"
 
 Reminders and one-time scheduled actions are delivered by the **Reminder Runner** (polls every minute). Recurring actions are executed by the **Heartbeat** (runs every 5 minutes). Missed reminders are automatically delivered on the next run.
 
