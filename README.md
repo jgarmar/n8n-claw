@@ -70,7 +70,7 @@ Webhook API (POST /webhook/agent)  ───────┐
 n8n-claw Agent (Claude Sonnet)
   ├── Task Manager        — create, track, complete tasks
   ├── Project Manager     — persistent project notes (markdown)
-  ├── Memory Save/Search  — long-term memory with vector search
+  ├── Memory              — save, search, update, delete long-term memories
   ├── MCP Client          → calls tools on MCP skill servers
   ├── Library Manager     → install/remove skills from catalog
   ├── MCP Builder          → builds custom skills from scratch
@@ -679,6 +679,11 @@ The agent has a multi-layered memory system — it remembers things you tell it 
 
 > "What do you know about my coffee preferences?"
 > "What did we discuss about the server migration?"
+
+**Memory update & delete:** The agent can correct or remove stored memories — no more contradictory entries piling up:
+
+> "Actually, I prefer tea now" — updates the existing coffee preference instead of creating a duplicate
+> "Forget that I like early meetings" — deletes the entry completely
 
 **Memory Consolidation** runs automatically every night at 3am. It summarizes the day's conversations into concise long-term memories with vector embeddings. This keeps the memory efficient and searchable. Requires an embedding API key (OpenAI, Voyage AI, or Ollama — configured during setup).
 
