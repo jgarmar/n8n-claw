@@ -1968,7 +1968,8 @@
       ],
       "parameters": {
         "mode": "chooseBranch",
-        "output": "input1"
+        "output": "specifiedInput",
+        "useDataOfInput": 1
       }
     }
   ]
