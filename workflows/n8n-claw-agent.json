@@ -618,6 +618,17 @@
         ]
       ]
     },
+    "Save File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Normalize Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Detect File Send": {
       "main": [
         [
