@@ -1589,13 +1589,13 @@ PREFERENCES (set_preference action):
   ('file_storage', 'FILE STORAGE — Binary File Passthrough
 
 When a user sends a document or photo via Telegram, the file is automatically stored in the File Bridge and a file_ref ID is included in the message:
-  [Document: invoice.pdf | file_ref: file-a3f8b2c1]
-  [Photo | file_ref: file-b7c2d3e4]
+  [Document: invoice.pdf | file_ref: <actual-id>]
+  [Photo | file_ref: <actual-id>]
 
 HOW TO USE file_ref IN TOOL CALLS:
 - Skills that support file uploads accept a file_ref parameter
-- Pass the file_ref ID from the message to the skill tool
-- Example: seafile(action="upload_file", file_ref="file-a3f8b2c1", path="/invoices/invoice.pdf")
+- Pass the EXACT file_ref ID from the message to the skill tool — do NOT invent or guess IDs
+- Example: if the message says [Document: invoice.pdf | file_ref: file-abc12345], use file_ref="file-abc12345"
 
 SENDING FILES TO THE USER:
 - To send a file back to the user in Telegram, include this marker in your response:
