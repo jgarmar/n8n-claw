@@ -1880,7 +1880,7 @@
         80
       ],
       "parameters": {
-        "jsCode": "const output = $('AI Agent').first().json.output || '';\n\n// Detect [send_file: URL] pattern\nconst fileMatch = output.match(/\\[send_file:\\s*(https?:\\/\\/[^\\]]+)\\]/);\n\nlet cleanText = output;\nlet fileUrl = null;\nlet hasFile = false;\n\nif (fileMatch) {\n  fileUrl = fileMatch[1].trim();\n  hasFile = true;\n  // Remove the marker from the text response\n  cleanText = output.replace(fileMatch[0], '').trim();\n}\n\nreturn [{ json: { text: cleanText, fileUrl, hasFile, chatId: $json.chatId, sessionId: $json.sessionId } }];"
+        "jsCode": "const output = $('AI Agent').first().json.output || '';\n\n// Detect [send_file: URL] pattern\nconst fileMatch = output.match(/\\[send_file:\\s*(https?:\\/\\/[^\\]]+)\\]/);\n\nlet cleanText = output;\nlet fileUrl = null;\nlet hasFile = false;\n\nif (fileMatch) {\n  fileUrl = fileMatch[1].trim();\n  hasFile = true;\n  // Remove the marker from the text response\n  cleanText = output.replace(fileMatch[0], '').trim();\n}\n\nreturn [{ json: { text: cleanText, fileUrl, hasFile } }];"
       }
     },
     {
@@ -1946,7 +1946,7 @@
       ],
       "parameters": {
         "operation": "sendDocument",
-        "chatId": "={{ $('Detect File Send').first().json.chatId }}",
+        "chatId": "={{ $('Build System Prompt').first().json.chatId }}",
         "binaryData": true,
         "binaryPropertyName": "data",
         "additionalFields": {}
