@@ -1947,7 +1947,8 @@
       "parameters": {
         "operation": "sendDocument",
         "chatId": "={{ $('Detect File Send').first().json.chatId }}",
-        "document": "data",
+        "binaryData": true,
+        "binaryPropertyName": "data",
         "additionalFields": {}
       },
       "credentials": {
