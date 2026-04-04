@@ -608,6 +608,15 @@ print(json.dumps([{'id': sys.argv[1], 'name': sys.argv[2], 'type': sys.argv[3], 
   fi
 }
 
+# Update existing credential data (PATCH)
+update_cred() {
+  local cred_id="$1" cred_name="$2" cred_type="$3" cred_data="$4"
+  curl -s -X PATCH "${N8N_BASE}/api/v1/credentials/${cred_id}" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${cred_name}\",\"type\":\"${cred_type}\",\"data\":${cred_data}}" > /dev/null 2>&1
+}
+
 # Check if credentials already exist before creating
 EXISTING_CREDS=$(curl -s "${N8N_BASE}/api/v1/credentials" -H "X-N8N-API-KEY: ${N8N_API_KEY}")
 EXISTING_TELEGRAM_ID=$(echo "$EXISTING_CREDS" | python3 -c "
@@ -653,7 +662,10 @@ case "${LLM_PROVIDER:-anthropic}" in
     if [ -n "$EXISTING_ANTHROPIC_ID" ]; then
       ANTHROPIC_CRED_ID="$EXISTING_ANTHROPIC_ID"
       LLM_CRED_ID="$ANTHROPIC_CRED_ID"
-      echo "  ✅ Anthropic API → ${ANTHROPIC_CRED_ID} (existing)"
+      if [ -n "$ANTHROPIC_API_KEY" ] && [[ "$ANTHROPIC_API_KEY" != "your_"* ]]; then
+        update_cred "$ANTHROPIC_CRED_ID" "Anthropic API" "anthropicApi" "{\"apiKey\":\"${ANTHROPIC_API_KEY}\"}"
+      fi
+      echo "  ✅ Anthropic API → ${ANTHROPIC_CRED_ID} (existing, updated)"
     elif [ -n "$ANTHROPIC_API_KEY" ] && [[ "$ANTHROPIC_API_KEY" != "your_"* ]]; then
       ANTHROPIC_CRED_ID=$(create_cred "Anthropic API" "anthropicApi" "{\"apiKey\":\"${ANTHROPIC_API_KEY}\"}")
       if [ -z "$ANTHROPIC_CRED_ID" ]; then
@@ -676,7 +688,8 @@ for c in creds:
 " 2>/dev/null)
     if [ -n "$EXISTING_OPENROUTER_ID" ]; then
       LLM_CRED_ID="$EXISTING_OPENROUTER_ID"
-      echo "  ✅ OpenRouter API → ${LLM_CRED_ID} (existing)"
+      update_cred "$LLM_CRED_ID" "OpenRouter API" "openRouterApi" "{\"apiKey\":\"${LLM_API_KEY}\"}"
+      echo "  ✅ OpenRouter API → ${LLM_CRED_ID} (existing, updated)"
     else
       LLM_CRED_ID=$(create_cred "OpenRouter API" "openRouterApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
       if [ -z "$LLM_CRED_ID" ]; then
@@ -694,7 +707,8 @@ for c in creds:
 " 2>/dev/null)
     if [ -n "$EXISTING_OLLAMA_ID" ]; then
       LLM_CRED_ID="$EXISTING_OLLAMA_ID"
-      echo "  ✅ Ollama → ${LLM_CRED_ID} (existing)"
+      update_cred "$LLM_CRED_ID" "Ollama" "ollamaApi" "{\"baseUrl\":\"${LLM_BASE_URL}\"}"
+      echo "  ✅ Ollama → ${LLM_CRED_ID} (existing, updated)"
     else
       LLM_CRED_ID=$(create_cred "Ollama" "ollamaApi" "{\"baseUrl\":\"${LLM_BASE_URL}\"}")
       if [ -z "$LLM_CRED_ID" ]; then
@@ -712,7 +726,8 @@ for c in creds:
 " 2>/dev/null)
     if [ -n "$EXISTING_DEEPSEEK_ID" ]; then
       LLM_CRED_ID="$EXISTING_DEEPSEEK_ID"
-      echo "  ✅ DeepSeek API → ${LLM_CRED_ID} (existing)"
+      update_cred "$LLM_CRED_ID" "DeepSeek API" "deepSeekApi" "{\"apiKey\":\"${LLM_API_KEY}\"}"
+      echo "  ✅ DeepSeek API → ${LLM_CRED_ID} (existing, updated)"
     else
       LLM_CRED_ID=$(create_cred "DeepSeek API" "deepSeekApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
       if [ -z "$LLM_CRED_ID" ]; then
@@ -730,7 +745,8 @@ for c in creds:
 " 2>/dev/null)
     if [ -n "$EXISTING_GEMINI_ID" ]; then
       LLM_CRED_ID="$EXISTING_GEMINI_ID"
-      echo "  ✅ Google Gemini API → ${LLM_CRED_ID} (existing)"
+      update_cred "$LLM_CRED_ID" "Google Gemini API" "googleGeminiApi" "{\"apiKey\":\"${LLM_API_KEY}\"}"
+      echo "  ✅ Google Gemini API → ${LLM_CRED_ID} (existing, updated)"
     else
       LLM_CRED_ID=$(create_cred "Google Gemini API" "googleGeminiApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
       if [ -z "$LLM_CRED_ID" ]; then
@@ -751,7 +767,8 @@ esac
 
 if [ -n "$EXISTING_TELEGRAM_ID" ]; then
   TELEGRAM_CRED_ID="$EXISTING_TELEGRAM_ID"
-  echo "  ✅ Telegram Bot → ${TELEGRAM_CRED_ID} (existing)"
+  update_cred "$TELEGRAM_CRED_ID" "Telegram Bot" "telegramApi" "{\"accessToken\":\"${TELEGRAM_BOT_TOKEN}\"}"
+  echo "  ✅ Telegram Bot → ${TELEGRAM_CRED_ID} (existing, updated)"
 else
   TELEGRAM_CRED_ID=$(create_cred "Telegram Bot" "telegramApi" "{\"accessToken\":\"${TELEGRAM_BOT_TOKEN}\"}")
   [ -z "$TELEGRAM_CRED_ID" ] && echo -e "  ${YELLOW}⚠️  Telegram credential failed — will patch from existing${NC}" || echo "  ✅ Telegram Bot → ${TELEGRAM_CRED_ID} (created)"
@@ -781,7 +798,8 @@ OPENAI_CRED_ID=""
 if [ -n "$OPENAI_API_KEY" ] && [[ "$OPENAI_API_KEY" != "your_"* ]]; then
   if [ -n "$EXISTING_OPENAI_ID" ]; then
     OPENAI_CRED_ID="$EXISTING_OPENAI_ID"
-    echo "  ✅ OpenAI API → ${OPENAI_CRED_ID} (existing)"
+    update_cred "$OPENAI_CRED_ID" "OpenAI API" "openAiApi" "{\"apiKey\":\"${OPENAI_API_KEY}\"}"
+    echo "  ✅ OpenAI API → ${OPENAI_CRED_ID} (existing, updated)"
   else
     OPENAI_CRED_ID=$(create_cred "OpenAI API" "openAiApi" "{\"apiKey\":\"${OPENAI_API_KEY}\"}")
     if [ -z "$OPENAI_CRED_ID" ]; then
@@ -791,6 +809,11 @@ if [ -n "$OPENAI_API_KEY" ] && [[ "$OPENAI_API_KEY" != "your_"* ]]; then
   fi
 else
   echo -e "  ${YELLOW}ℹ️  OpenAI API Key not set — voice transcription disabled${NC}"
+fi
+
+# If LLM provider is OpenAI, reuse OpenAI credential as LLM credential
+if [ "${LLM_PROVIDER:-}" = "openai" ] && [ -n "$OPENAI_CRED_ID" ]; then
+  LLM_CRED_ID="$OPENAI_CRED_ID"
 fi
 
 # Webhook Auth credential (for webhook API authentication)
