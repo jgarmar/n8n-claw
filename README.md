@@ -145,45 +145,10 @@ The script will:
    - Free-text custom persona *(overrides the above)*
 6. **Start all services** (n8n, PostgreSQL, PostgREST, Kong, Supabase Studio, SearXNG, Crawl4AI, Email Bridge, File Bridge)
 7. **Apply database schema** and seed data
-8. **Create n8n credentials** (Telegram Bot automatically)
+8. **Create n8n credentials** (Telegram, LLM provider, Webhook Auth — all automatic)
 9. **Import all workflows** into n8n
 10. **Wire workflow references** (MCP Builder, Reminders, etc.)
 11. **Activate the agent** automatically
-
-### Step 2 — Add credentials in n8n UI
-
-Open n8n at the URL shown at the end of setup.
-
-The easiest way is to open each workflow and click **"Create new credential"** directly on the node that needs it. n8n will prompt you automatically.
-
-**Credentials you'll need:**
-
-| Credential | Name (exact!) | Where needed |
-|---|---|---|
-| Postgres | `Supabase Postgres` | Agent, Sub-Agent Runner |
-| LLM Provider | *depends on provider* | Agent (LLM node), MCP Builder, Sub-Agent Runner — *setup creates the credential and patches all LLM nodes automatically* |
-| Telegram Bot | `Telegram Bot` | Agent (Telegram Trigger + Reply) — *created automatically by setup* |
-| OpenAI API | `OpenAI API` | Agent (Voice transcription via Whisper) — *optional, created by setup if key provided* |
-| Webhook Auth | `Webhook Auth` | Agent + Adapter (Webhook Triggers) — *created automatically by setup* |
-
-**After fresh install — connect credentials in these workflows:**
-
-| Workflow | Credentials to connect |
-|---|---|
-| n8n-claw Agent | Postgres, LLM Provider, OpenAI API (optional, for voice) |
-| MCP Builder | LLM Provider (select on LLM node) |
-| Sub-Agent Runner | Postgres, LLM Provider |
-
-**After update (`./setup.sh`)** — credentials persist in the Agent and MCP Builder, but must be re-selected in:
-
-| Workflow | Credentials to re-connect |
-|---|---|
-| Sub-Agent Runner | Postgres, LLM Provider |
-
-**Postgres connection details** *(shown in setup output)*:
-- Host: `db` | Port: `5432` | DB: `postgres` | User: `postgres`
-- Password: *(shown at end of setup)*
-- SSL: `disable`
 
 **Optional: Embeddings for semantic memory search:**
 
@@ -198,6 +163,21 @@ Without an embedding key, the agent still works — it falls back to keyword-bas
 **Optional: OpenAI API Key for voice messages:**
 
 If you chose OpenAI as your embedding provider, the same key is automatically used for voice transcription (Whisper) — no extra input needed. If you use a different embedding provider (or none), setup will ask separately for an OpenAI key. Without it, voice messages won't work — but photos, documents, and locations work without any extra keys.
+
+### Step 2 — Start chatting
+
+All credentials are created and connected automatically by setup. Send a message to your Telegram bot — it's ready!
+
+You can also test the webhook API:
+
+```bash
+curl -X POST https://YOUR-DOMAIN/webhook/agent \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_WEBHOOK_SECRET" \
+  -d '{"message": "Hello!", "user_id": "test-user"}'
+```
+
+The `WEBHOOK_SECRET` is shown at the end of setup output (also in `.env`).
 
 ### Step 3 — Activate remaining workflows
 
@@ -231,21 +211,6 @@ Sub-workflows (called by other workflows, no manual activation needed):
 | credential-form | Library Manager — secure form for entering API keys |
 | OAuth Callback | Google Skills — handles OAuth2 authorization redirect |
 | Webhook Adapter | Connects Slack, Teams, and custom apps to the agent (imported inactive) |
-
-### Step 4 — Start chatting
-
-Send a message to your Telegram bot. It's ready!
-
-You can also test the webhook API:
-
-```bash
-curl -X POST https://YOUR-DOMAIN/webhook/agent \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: YOUR_WEBHOOK_SECRET" \
-  -d '{"message": "Hello!", "user_id": "test-user"}'
-```
-
-The `WEBHOOK_SECRET` is shown at the end of setup output (also in `.env`).
 
 ### Secure your Telegram bot
 
@@ -1182,7 +1147,14 @@ Use `--force` when you want to change your agent's name, language, communication
 → Check all workflows are **activated** in n8n UI
 
 **"Credential does not exist" error?**
-→ Add the Postgres credential manually (see Step 2)
+→ Setup creates all credentials automatically, but if it showed a ⚠️ warning for any credential, add it manually in n8n UI → Credentials → New:
+
+| Credential | Type | Key fields |
+|---|---|---|
+| `Supabase Postgres` | Postgres | Host: `db`, Port: `5432`, DB: `postgres`, User: `postgres`, Password: *(from setup output)*, SSL: `disable` |
+| `Telegram Bot` | Telegram | Bot Token: *(from setup)* |
+| LLM Provider | *depends on choice* | API Key: *(from setup)* — credential name must match exactly (see [Supported LLM Providers](#supported-llm-providers)) |
+| `Webhook Auth` | Header Auth | Name: `X-API-Key`, Value: *(WEBHOOK_SECRET from .env)* |
 
 **MCP Builder fails?**
 → Make sure the LLM node in MCP Builder has your LLM provider credential selected
