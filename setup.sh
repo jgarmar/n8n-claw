@@ -741,16 +741,16 @@ for c in creds:
 import sys,json
 creds=json.load(sys.stdin).get('data',[])
 for c in creds:
-    if c.get('type')=='googleGeminiApi': print(c['id']); break
+    if c.get('type')=='googlePalmApi': print(c['id']); break
 " 2>/dev/null)
     if [ -n "$EXISTING_GEMINI_ID" ]; then
       LLM_CRED_ID="$EXISTING_GEMINI_ID"
-      update_cred "$LLM_CRED_ID" "Google Gemini API" "googleGeminiApi" "{\"apiKey\":\"${LLM_API_KEY}\"}"
+      update_cred "$LLM_CRED_ID" "Google Gemini API" "googlePalmApi" "{\"apiKey\":\"${LLM_API_KEY}\"}"
       echo "  ✅ Google Gemini API → ${LLM_CRED_ID} (existing, updated)"
     else
-      LLM_CRED_ID=$(create_cred "Google Gemini API" "googleGeminiApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
+      LLM_CRED_ID=$(create_cred "Google Gemini API" "googlePalmApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
       if [ -z "$LLM_CRED_ID" ]; then
-        LLM_CRED_ID=$(import_cred "Google Gemini API" "googleGeminiApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
+        LLM_CRED_ID=$(import_cred "Google Gemini API" "googlePalmApi" "{\"apiKey\":\"${LLM_API_KEY}\"}")
       fi
       [ -z "$LLM_CRED_ID" ] && echo -e "  ${YELLOW}⚠️  Google Gemini credential failed — add manually in n8n UI${NC}" || echo "  ✅ Google Gemini API → ${LLM_CRED_ID} (created)"
     fi
