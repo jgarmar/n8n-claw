@@ -547,6 +547,16 @@ if [ -n "$OAUTH_ERRORS" ]; then
 fi
 echo "  ✅ OAuth migration applied"
 
+echo "  Applying Knowledge System migration..."
+KNOWLEDGE_OUTPUT=$(LANG=C LC_ALL=C PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres \
+  -f supabase/migrations/004_knowledge.sql 2>&1)
+KNOWLEDGE_ERRORS=$(echo "$KNOWLEDGE_OUTPUT" | grep -i "error" | head -5)
+if [ -n "$KNOWLEDGE_ERRORS" ]; then
+  echo -e "  ${YELLOW}⚠️  Knowledge migration warnings:${NC}"
+  echo "$KNOWLEDGE_ERRORS" | while read line; do echo "    $line"; done
+fi
+echo "  ✅ Knowledge system tables applied"
+
 # Reload PostgREST schema cache so new tables are immediately available via API
 docker kill --signal=SIGUSR1 $(docker ps -q --filter name=rest) 2>/dev/null || true
 
@@ -2117,16 +2127,27 @@ RULE: Prefer UPDATE over DELETE+SAVE when correcting information.
 RULE: ALWAYS search before updating or deleting to get the correct ID.
 You are a personal assistant — the better you know the user, the better you can help.
 
+ENTITY MANAGER (entity_manager):
+- Use for: tracking people, companies, projects, places, events and their relationships
+- SAVE entities when the user mentions a person, company, or project that comes up repeatedly
+- RELATE entities when you learn about connections between them
+- SEARCH entities when you need context about a person or topic
+- GRAPH to explore connections around an entity
+- Do NOT create entities for every passing mention — only for recurring, important subjects
+
 HTTP (http_request):
 - Use for: simple API calls without authentication'),
 
-  ('memory_behavior', 'You have long-term memory. Use it actively:
+  ('memory_behavior', 'You have long-term memory with enriched tagging. Use it actively:
 - Do not greet the user the same way every time — remember ongoing topics
 - Before recommending anything, check if you know their preferences
 - Reference past conversations when relevant
 - Learn from corrections: when the user corrects you, search for the old memory and UPDATE it rather than creating a duplicate
 - Remove obsolete memories: if you find a memory that is clearly wrong or outdated, delete it
-- Never ask for information you have already saved'),
+- Never ask for information you have already saved
+- When saving memories, include tags (keywords) and entity_name (person/company/place) when applicable
+- Use entity_name to group related memories about the same subject
+- Set source: user_stated (user said it explicitly), conversation (inferred from chat), task_result (from a completed task)'),
 
   ('task_management', 'You can manage tasks for the user via the Task Manager tool.
 
@@ -2217,6 +2238,29 @@ IMPORTANT RULES:
 - Always mention the original filename when discussing stored files
 - If a skill needs a file the user sent earlier in the conversation, use the file_ref from that message
 - For skills that accept both file_ref and file_url: prefer file_ref for files the user sent, file_url for external URLs'),
+
+  ('knowledge_graph', 'You have a Knowledge Graph for tracking entities and relationships.
+
+WHEN TO CREATE ENTITIES:
+- A person, company, project, place, or event comes up repeatedly
+- The user explicitly asks you to remember a relationship
+- Important contacts, clients, partners, or recurring topics
+
+WHEN TO CREATE RELATIONS:
+- You learn that person X works at company Y
+- An event is organized by someone, sponsored by someone
+- Projects are connected to people or organizations
+- Use descriptive relation_types: works_at, speaks_at, sponsors, part_of, manages, located_in, related_to
+
+WHEN TO SEARCH THE GRAPH:
+- User asks "what do you know about X?"
+- You need context about a person or organization before a meeting
+- Looking up connections: "who is involved in project Y?"
+
+IMPORTANT:
+- Entity names should be consistent — always use the same canonical name
+- When you save a memory with entity_name, also check if that entity exists in the knowledge graph
+- The graph complements memory — memory stores facts, the graph stores relationships'),
 
   ('user_context', 'The user is {user}. Context: {ctx}')
 

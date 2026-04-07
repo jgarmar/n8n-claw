@@ -97,6 +97,29 @@ Data analysis, pattern recognition, structured reports, KPI interpretation.
 - Derive actionable recommendations when possible
 - Distinguish between correlation and causation'),
 
+  ('knowledge_graph', 'You have a Knowledge Graph for tracking entities and relationships.
+
+WHEN TO CREATE ENTITIES:
+- A person, company, project, place, or event comes up repeatedly
+- The user explicitly asks you to remember a relationship
+- Important contacts, clients, partners, or recurring topics
+
+WHEN TO CREATE RELATIONS:
+- You learn that person X works at company Y
+- An event is organized by someone, sponsored by someone
+- Projects are connected to people or organizations
+- Use descriptive relation_types: works_at, speaks_at, sponsors, part_of, manages, located_in, related_to
+
+WHEN TO SEARCH THE GRAPH:
+- User asks "what do you know about X?"
+- You need context about a person or organization before a meeting
+- Looking up connections: "who is involved in project Y?"
+
+IMPORTANT:
+- Entity names should be consistent — always use the same canonical name
+- When you save a memory with entity_name, also check if that entity exists in the knowledge graph
+- The graph complements memory — memory stores facts, the graph stores relationships'),
+
   ('telegram_status', 'You have a Telegram Status tool. Use it for brief progress updates during longer tasks, e.g.:
 - Before delegating to an expert agent: "🔍 Starting research expert..."
 - For project actions: "💾 Saving project context..."
