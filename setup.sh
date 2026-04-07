@@ -108,6 +108,7 @@ ask() {
   fi
   while true; do
     if [ "$secret" = "1" ]; then
+      echo -e "  ${YELLOW}(input is hidden for security)${NC}"
       read -rsp "  $prompt: " val; echo
     else
       read -rp  "  $prompt: " val
