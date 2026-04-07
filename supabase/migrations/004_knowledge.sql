@@ -1,24 +1,24 @@
 --
 -- Knowledge System Migration (Phase 1 + Phase 2)
 --
--- Phase 1: Enriched Memory — neue Spalten auf memory_long + erweiterte Suchfunktionen
--- Phase 2: Knowledge Graph — kg_entities + kg_relations + Graph-Traversal
+-- Phase 1: Enriched Memory — new columns on memory_long + extended search functions
+-- Phase 2: Knowledge Graph — kg_entities + kg_relations + graph traversal
 --
--- Idempotent: kann mehrfach ausgeführt werden (IF NOT EXISTS / CREATE OR REPLACE)
--- Einzige Ausnahme: DROP FUNCTION für search_memory/search_memory_keyword
--- (Return-Type-Änderung erfordert DROP vor CREATE)
+-- Idempotent: can be run multiple times (IF NOT EXISTS / CREATE OR REPLACE)
+-- Exception: DROP FUNCTION for search_memory/search_memory_keyword
+-- (return type change requires DROP before CREATE)
 --
 
 -- ============================================================
 -- PHASE 1: Enriched Memory
 -- ============================================================
 
--- Neue Spalten auf memory_long
+-- New columns on memory_long
 ALTER TABLE public.memory_long ADD COLUMN IF NOT EXISTS tags text[] DEFAULT '{}';
 ALTER TABLE public.memory_long ADD COLUMN IF NOT EXISTS entity_name text;
 ALTER TABLE public.memory_long ADD COLUMN IF NOT EXISTS source text;
 
--- Indexes für die neuen Spalten
+-- Indexes for new columns
 CREATE INDEX IF NOT EXISTS idx_memory_long_entity_name
   ON public.memory_long (entity_name)
   WHERE entity_name IS NOT NULL;
@@ -27,8 +27,8 @@ CREATE INDEX IF NOT EXISTS idx_memory_long_tags
   ON public.memory_long USING gin (tags)
   WHERE tags != '{}';
 
--- Erweiterte Suchfunktion: search_memory
--- DROP nötig weil sich der Return-Type ändert (3 neue Spalten)
+-- Extended search function: search_memory
+-- DROP required because return type changes (3 new columns)
 DROP FUNCTION IF EXISTS public.search_memory(public.vector, double precision, integer, text);
 DROP FUNCTION IF EXISTS public.search_memory(public.vector, double precision, integer, text, text, text[]);
 
@@ -84,7 +84,7 @@ GRANT ALL ON FUNCTION public.search_memory(public.vector, double precision, inte
 GRANT ALL ON FUNCTION public.search_memory(public.vector, double precision, integer, text, text, text[]) TO authenticated;
 GRANT ALL ON FUNCTION public.search_memory(public.vector, double precision, integer, text, text, text[]) TO service_role;
 
--- Erweiterte Suchfunktion: search_memory_keyword
+-- Extended search function: search_memory_keyword
 DROP FUNCTION IF EXISTS public.search_memory_keyword(text, integer);
 DROP FUNCTION IF EXISTS public.search_memory_keyword(text, integer, text, text[]);
 
@@ -140,7 +140,7 @@ GRANT ALL ON FUNCTION public.search_memory_keyword(text, integer, text, text[]) 
 -- PHASE 2: Knowledge Graph
 -- ============================================================
 
--- Entitäten-Tabelle
+-- Entities table
 CREATE TABLE IF NOT EXISTS public.kg_entities (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS public.kg_entities (
 
 ALTER TABLE public.kg_entities OWNER TO postgres;
 
--- Beziehungen-Tabelle
+-- Relations table
 CREATE TABLE IF NOT EXISTS public.kg_relations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source_id UUID REFERENCES public.kg_entities(id) ON DELETE CASCADE,
@@ -185,7 +185,7 @@ GRANT ALL ON TABLE public.kg_relations TO anon;
 GRANT ALL ON TABLE public.kg_relations TO authenticated;
 GRANT ALL ON TABLE public.kg_relations TO service_role;
 
--- Semantische Entity-Suche
+-- Semantic entity search
 CREATE OR REPLACE FUNCTION public.search_entities(
   query_embedding public.vector DEFAULT NULL,
   search_name text DEFAULT NULL,
@@ -240,7 +240,7 @@ GRANT ALL ON FUNCTION public.search_entities(public.vector, text, text, double p
 GRANT ALL ON FUNCTION public.search_entities(public.vector, text, text, double precision, integer) TO authenticated;
 GRANT ALL ON FUNCTION public.search_entities(public.vector, text, text, double precision, integer) TO service_role;
 
--- Graph-Traversal (rekursive CTE, Multi-Hop)
+-- Graph traversal (recursive CTE, multi-hop)
 CREATE OR REPLACE FUNCTION public.search_entity_graph(
   start_id UUID,
   max_depth integer DEFAULT 2
@@ -258,29 +258,27 @@ AS $$
 BEGIN
   RETURN QUERY
   WITH RECURSIVE graph AS (
-    -- Hop 1: ausgehende Beziehungen
-    SELECT r.target_id AS eid, 1 AS d, r.relation_type AS rtype, 'outgoing'::text AS dir
-    FROM public.kg_relations r
-    WHERE r.source_id = start_id
-      AND (r.valid_until IS NULL OR r.valid_until > now())
+    -- Base: all direct relations (outgoing + incoming)
+    SELECT * FROM (
+      SELECT r.target_id AS eid, 1 AS d, r.relation_type AS rtype, 'outgoing'::text AS dir
+      FROM public.kg_relations r
+      WHERE r.source_id = start_id
+        AND (r.valid_until IS NULL OR r.valid_until > now())
+      UNION ALL
+      SELECT r.source_id, 1, r.relation_type, 'incoming'::text
+      FROM public.kg_relations r
+      WHERE r.target_id = start_id
+        AND (r.valid_until IS NULL OR r.valid_until > now())
+    ) base
     UNION ALL
-    -- Hop 1: eingehende Beziehungen
-    SELECT r.source_id, 1, r.relation_type, 'incoming'::text
+    -- Recursive: multi-hop (both directions in one query)
+    SELECT
+      CASE WHEN r.source_id = g.eid THEN r.target_id ELSE r.source_id END AS eid,
+      g.d + 1 AS d,
+      r.relation_type AS rtype,
+      CASE WHEN r.source_id = g.eid THEN 'outgoing'::text ELSE 'incoming'::text END AS dir
     FROM public.kg_relations r
-    WHERE r.target_id = start_id
-      AND (r.valid_until IS NULL OR r.valid_until > now())
-    UNION ALL
-    -- Hop 2+: rekursiv (ausgehend)
-    SELECT r.target_id, g.d + 1, r.relation_type, 'outgoing'::text
-    FROM public.kg_relations r
-    JOIN graph g ON r.source_id = g.eid
-    WHERE g.d < max_depth
-      AND (r.valid_until IS NULL OR r.valid_until > now())
-    UNION ALL
-    -- Hop 2+: rekursiv (eingehend)
-    SELECT r.source_id, g.d + 1, r.relation_type, 'incoming'::text
-    FROM public.kg_relations r
-    JOIN graph g ON r.target_id = g.eid
+    JOIN graph g ON (r.source_id = g.eid OR r.target_id = g.eid)
     WHERE g.d < max_depth
       AND (r.valid_until IS NULL OR r.valid_until > now())
   )
