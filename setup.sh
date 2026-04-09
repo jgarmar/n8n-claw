@@ -2464,7 +2464,7 @@ Actions: list_agents, install_agent, remove_agent, list_installed
 - **content-creator**: Copywriting, social media content, blog articles, marketing copy, creative writing.
 - **data-analyst**: Data analysis, pattern recognition, structured reports, KPI interpretation.')
 
-ON CONFLICT (key) DO UPDATE SET content = EXCLUDED.content;
+ON CONFLICT (key) DO NOTHING;
 """
 
 result = subprocess.run(['psql','-h','localhost','-U','postgres','-d','postgres'],
