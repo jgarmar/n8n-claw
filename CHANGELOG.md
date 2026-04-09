@@ -11,6 +11,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 Memory retrieval upgraded from pure semantic search to three-branch hybrid search with Reciprocal Rank Fusion (RRF). The agent now finds people by name, survives embedding API outages, and naturally prefers recent context.
 
+Hybrid search architecture inspired by [@geckse](https://github.com/geckse)'s [markdown-vdb](https://github.com/geckse/markdown-vdb) — a Rust-based vector DB with hybrid search (semantic + BM25 + RRF) designed for AI agents. We adapted the three-branch RRF fusion pattern for PostgreSQL using tsvector + pgvector.
+
 ### Added
 - **Hybrid Search RPC** (`hybrid_search_memory`) — fuses three independent search branches via RRF (k=60, Cormack standard):
   - **Semantic** — pgvector cosine distance (unchanged from v1.1)
