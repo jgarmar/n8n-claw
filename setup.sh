@@ -1294,7 +1294,7 @@ with open(f, 'w') as fh:
     json.dump(wf, fh, indent=2, ensure_ascii=False)
 " "$out" "${TELEGRAM_CRED_ID:-}" "${POSTGRES_CRED_ID:-}" "${ANTHROPIC_CRED_ID:-}" "${OPENAI_CRED_ID:-}" "${HEADERAUTH_CRED_ID:-}" "${EXISTING_SLACK_ID:-}" "${LLM_CRED_ID:-}" "${LLM_CRED_TYPE:-}"
 done
-IMPORT_ORDER="mcp-client reminder-factory reminder-runner mcp-weather-example workflow-builder mcp-builder mcp-library-manager agent-library-manager sub-agent-runner credential-form oauth-callback memory-consolidation background-checker heartbeat webhook-adapter n8n-claw-agent"
+IMPORT_ORDER="error-notification mcp-client reminder-factory reminder-runner mcp-weather-example workflow-builder mcp-builder mcp-library-manager agent-library-manager sub-agent-runner credential-form oauth-callback memory-consolidation background-checker heartbeat webhook-adapter n8n-claw-agent"
 
 # n8n Public API settings whitelist — the PUT endpoint rejects any settings
 # field not in its OpenAPI schema (additionalProperties: false), even though
@@ -1549,6 +1549,33 @@ print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'set
   fi
 fi
 
+# ── 11e. Wire error workflow to critical workflows ──────────
+ERROR_WF_ID=${WF_IDS['error-notification']}
+if [ -n "$ERROR_WF_ID" ]; then
+  for target in n8n-claw-agent background-checker sub-agent-runner; do
+    target_id=${WF_IDS[$target]}
+    [ -z "$target_id" ] && continue
+    WF_JSON=$(curl -s "${N8N_BASE}/api/v1/workflows/${target_id}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}")
+    PATCHED_ERR=$(echo "$WF_JSON" | python3 -c "
+import sys, json
+ALLOWED = set('${N8N_SETTINGS_WHITELIST}'.split(','))
+wf = json.load(sys.stdin)
+nodes = wf.get('nodes') or wf.get('activeVersion',{}).get('nodes',[])
+conns = wf.get('connections') or wf.get('activeVersion',{}).get('connections',{})
+settings = {k: v for k, v in wf.get('settings',{}).items() if k in ALLOWED}
+settings['errorWorkflow'] = '${ERROR_WF_ID}'
+print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'settings': settings}))
+" 2>/dev/null)
+    if [ -n "$PATCHED_ERR" ]; then
+      echo "$PATCHED_ERR" | curl -s -X PUT "${N8N_BASE}/api/v1/workflows/${target_id}" \
+        -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+        -H "Content-Type: application/json" -d @- > /dev/null
+      echo "  ✅ ${target} → error workflow ${ERROR_WF_ID}"
+    fi
+  done
+fi
+
 fi  # end INSTALL_MODE guard for workflows
 
 # ── 12. Activate agent ───────────────────────────────────────
@@ -1572,6 +1599,14 @@ if [ -n "$AGENT_ID" ]; then
       break
     fi
   done
+fi
+
+# Activate Error Notification workflow (must be active for Error Trigger to fire)
+ERROR_NOTIF_ID=${WF_IDS['error-notification']}
+if [ -n "$ERROR_NOTIF_ID" ]; then
+  curl -s -X POST "${N8N_BASE}/api/v1/workflows/${ERROR_NOTIF_ID}/activate" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
+  echo -e "  ${GREEN}✅ Error Notification workflow activated${NC}"
 fi
 
 # Activate Memory Consolidation

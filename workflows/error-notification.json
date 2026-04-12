@@ -1,0 +1,74 @@
+{
+  "name": "Error Benachrichtigung",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "chatId": "{{TELEGRAM_CHAT_ID}}",
+        "text": "=🚨 Fehler in {{ $json.workflow.name }}:\n\n{{ $json.execution.error.message }}",
+        "additionalFields": {}
+      },
+      "id": "telegram-notify",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [240, -120],
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO memory_long (content, category, importance, tags, entity_name) VALUES ($NCLAWERR${{ 'Workflow-Fehler in \"' + $json.workflow.name + '\" (ID ' + $json.workflow.id + ') am ' + $now.toFormat('yyyy-MM-dd HH:mm') + ': ' + ($json.execution.error.message || 'unbekannter Fehler') + '. Node: ' + ($json.execution.lastNodeExecuted || 'n/a') + '. Execution: ' + ($json.execution.url || 'n/a') }}$NCLAWERR$, 'error', 8, ARRAY['error','workflow-failure', $NCLAWERR${{ $json.workflow.name }}$NCLAWERR$], $NCLAWERR${{ 'workflow:' + $json.workflow.name }}$NCLAWERR$)",
+        "options": {
+          "queryBatching": "independently"
+        }
+      },
+      "id": "log-error-to-db",
+      "name": "Log Error to memory_long",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [240, 120],
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Supabase Postgres"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Error to memory_long",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
