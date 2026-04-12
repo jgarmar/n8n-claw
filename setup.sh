@@ -2355,12 +2355,12 @@ WHEN TO CHECK PROACTIVELY:
 
 HOW TO RETRIEVE — CRITICAL, FOLLOW EXACTLY:
 - ALWAYS call memory_search with JSON input and the category filter, NEVER with a free-text question.
-- Correct call: memory_search with input {"search_query": "error", "category": "error"}
+- Correct call: memory_search with input {{"search_query": "error", "category": "error"}}
 - The category filter narrows the search to error rows only. The search_query "error" then matches every error row via fulltext — you will see ALL recent failures.
-- For a specific workflow, use: {"search_query": "<workflow_name>", "category": "error"} — e.g. {"search_query": "background", "category": "error"}.
+- For a specific workflow, use: {{"search_query": "<workflow_name>", "category": "error"}} — e.g. {{"search_query": "background", "category": "error"}}.
 - WHY this rule exists: the fulltext index uses AND-semantics with no stemming. A natural-language query like "error workflow failure recent" requires ALL four tokens to be present in the row — "failure" does NOT match "Failed", and "recent" matches nothing. You will get zero results and falsely conclude nothing failed. DO NOT make this mistake.
 - Do NOT add time words like "today", "last night", "recent" to search_query — they break the match. Filter by created_at mentally after you get the results (they arrive sorted by recency via time decay).
-- If the user asks about a specific period, just fetch errors with {"search_query": "error", "category": "error"} and look at created_at in the returned rows.
+- If the user asks about a specific period, just fetch errors with {{"search_query": "error", "category": "error"}} and look at created_at in the returned rows.
 
 HOW TO REPORT:
 - Summarize in the user''s language and your own tone — do not dump raw metadata
