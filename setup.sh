@@ -1294,7 +1294,7 @@ with open(f, 'w') as fh:
     json.dump(wf, fh, indent=2, ensure_ascii=False)
 " "$out" "${TELEGRAM_CRED_ID:-}" "${POSTGRES_CRED_ID:-}" "${ANTHROPIC_CRED_ID:-}" "${OPENAI_CRED_ID:-}" "${HEADERAUTH_CRED_ID:-}" "${EXISTING_SLACK_ID:-}" "${LLM_CRED_ID:-}" "${LLM_CRED_TYPE:-}"
 done
-IMPORT_ORDER="mcp-client reminder-factory reminder-runner mcp-weather-example workflow-builder mcp-builder mcp-library-manager agent-library-manager sub-agent-runner credential-form oauth-callback memory-consolidation background-checker heartbeat webhook-adapter n8n-claw-agent"
+IMPORT_ORDER="error-notification mcp-client reminder-factory reminder-runner mcp-weather-example workflow-builder mcp-builder mcp-library-manager agent-library-manager sub-agent-runner credential-form oauth-callback memory-consolidation background-checker heartbeat webhook-adapter n8n-claw-agent"
 
 # n8n Public API settings whitelist — the PUT endpoint rejects any settings
 # field not in its OpenAPI schema (additionalProperties: false), even though
@@ -1549,6 +1549,33 @@ print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'set
   fi
 fi
 
+# ── 11e. Wire error workflow to critical workflows ──────────
+ERROR_WF_ID=${WF_IDS['error-notification']}
+if [ -n "$ERROR_WF_ID" ]; then
+  for target in n8n-claw-agent background-checker sub-agent-runner; do
+    target_id=${WF_IDS[$target]}
+    [ -z "$target_id" ] && continue
+    WF_JSON=$(curl -s "${N8N_BASE}/api/v1/workflows/${target_id}" \
+      -H "X-N8N-API-KEY: ${N8N_API_KEY}")
+    PATCHED_ERR=$(echo "$WF_JSON" | python3 -c "
+import sys, json
+ALLOWED = set('${N8N_SETTINGS_WHITELIST}'.split(','))
+wf = json.load(sys.stdin)
+nodes = wf.get('nodes') or wf.get('activeVersion',{}).get('nodes',[])
+conns = wf.get('connections') or wf.get('activeVersion',{}).get('connections',{})
+settings = {k: v for k, v in wf.get('settings',{}).items() if k in ALLOWED}
+settings['errorWorkflow'] = '${ERROR_WF_ID}'
+print(json.dumps({'name': wf['name'], 'nodes': nodes, 'connections': conns, 'settings': settings}))
+" 2>/dev/null)
+    if [ -n "$PATCHED_ERR" ]; then
+      echo "$PATCHED_ERR" | curl -s -X PUT "${N8N_BASE}/api/v1/workflows/${target_id}" \
+        -H "X-N8N-API-KEY: ${N8N_API_KEY}" \
+        -H "Content-Type: application/json" -d @- > /dev/null
+      echo "  ✅ ${target} → error workflow ${ERROR_WF_ID}"
+    fi
+  done
+fi
+
 fi  # end INSTALL_MODE guard for workflows
 
 # ── 12. Activate agent ───────────────────────────────────────
@@ -1572,6 +1599,14 @@ if [ -n "$AGENT_ID" ]; then
       break
     fi
   done
+fi
+
+# Activate Error Notification workflow (must be active for Error Trigger to fire)
+ERROR_NOTIF_ID=${WF_IDS['error-notification']}
+if [ -n "$ERROR_NOTIF_ID" ]; then
+  curl -s -X POST "${N8N_BASE}/api/v1/workflows/${ERROR_NOTIF_ID}/activate" \
+    -H "X-N8N-API-KEY: ${N8N_API_KEY}" > /dev/null 2>&1
+  echo -e "  ${GREEN}✅ Error Notification workflow activated${NC}"
 fi
 
 # Activate Memory Consolidation
@@ -2301,6 +2336,37 @@ CONSISTENCY:
 - The tool auto-detects duplicate entities and relations — no need to search before every save
 - The graph complements memory — memory stores facts and preferences, the graph stores relationships
 - Do NOT create entities for trivial mentions — only for subjects the user cares about or that come up repeatedly'),
+
+  ('error_log', 'WORKFLOW ERROR LOG — proactive failure awareness
+
+A global Error Notification workflow catches failures in the main agent, background-checker, and sub-agent-runner. Every failure is logged to memory_long with:
+- category = ''error''
+- importance = 8
+- tags include ''error'', ''workflow-failure'', and the workflow name
+- entity_name = ''workflow:<workflow_name>''
+- content = human-readable summary (workflow name, timestamp, error message, failing node, execution URL)
+- metadata (jsonb) contains execution_id, execution_url, execution_mode, workflow_id, workflow_name, node_name, error_name, error_message and a truncated error_stack
+
+WHEN TO CHECK PROACTIVELY:
+- User asks "ist was schiefgelaufen?", "lief alles?", "hat X funktioniert?", "did anything fail?", "any errors today?"
+- User references a workflow or system component in a doubtful tone ("was the background check ok?")
+- User reports unexpected behavior ("I didn''t get my reminder")
+- Before apologizing or guessing — first check if there''s a logged error that explains it
+
+HOW TO RETRIEVE — CRITICAL, FOLLOW EXACTLY:
+- ALWAYS call memory_search with JSON input and the category filter, NEVER with a free-text question.
+- Correct call: memory_search with input {{"search_query": "error", "category": "error"}}
+- The category filter narrows the search to error rows only. The search_query "error" then matches every error row via fulltext — you will see ALL recent failures.
+- For a specific workflow, use: {{"search_query": "<workflow_name>", "category": "error"}} — e.g. {{"search_query": "background", "category": "error"}}.
+- WHY this rule exists: the fulltext index uses AND-semantics with no stemming. A natural-language query like "error workflow failure recent" requires ALL four tokens to be present in the row — "failure" does NOT match "Failed", and "recent" matches nothing. You will get zero results and falsely conclude nothing failed. DO NOT make this mistake.
+- Do NOT add time words like "today", "last night", "recent" to search_query — they break the match. Filter by created_at mentally after you get the results (they arrive sorted by recency via time decay).
+- If the user asks about a specific period, just fetch errors with {{"search_query": "error", "category": "error"}} and look at created_at in the returned rows.
+
+HOW TO REPORT:
+- Summarize in the user''s language and your own tone — do not dump raw metadata
+- Mention what failed (workflow + node), when (relative time like "heute Nacht um 03:12"), and the error message
+- If the execution URL is present in the content, offer it as a clickable reference
+- Do NOT invent errors — if memory_search returns nothing for the relevant window, say so plainly'),
 
   ('user_context', 'The user is {user}. Context: {ctx}')
 
