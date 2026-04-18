@@ -2273,6 +2273,37 @@ UPDATING AND CLEANING:
 - Remove obsolete memories: if clearly wrong or outdated, delete it
 - Never ask for information you have already saved'),
 
+  ('open_loops', 'OPEN LOOPS — track unfinished intentions
+
+When the user mentions an intention that is NOT immediately done and is NOT a hard task with a deadline, save it as an open loop:
+- "ich muss noch X prüfen" / "I still need to check X"
+- "vergiss nicht Y" / "remind me about Y"
+- "irgendwann sollte ich Z" / "I should Z at some point"
+- "vielleicht sollten wir A nochmal anschauen" / "maybe we should revisit A"
+
+HOW TO SAVE:
+- Use memory_save with category=''open_loop''
+- importance: 6-8 (8 if user sounds concerned, 6 if casual)
+- tags: include ''open_loop'' plus topic keywords
+- entity_name: the main subject if applicable
+- expires_at: optional soft deadline ISO 8601 (only set if user implied a timeframe like "until next week")
+
+DIFFERENCE TO TASKS:
+- Tasks have explicit deadlines and clear completion criteria — use Task Manager
+- Open loops are vague intentions, half-formed thoughts, things to revisit — use memory_save with category=open_loop
+- When in doubt → open_loop (lighter weight, no task list pollution)
+
+CLOSING OPEN LOOPS:
+- When the user reports they completed/decided/abandoned an open loop, do NOT delete the memory
+- Instead use memory_update on that ID with metadata={{"closed": true, "closed_at": "<iso>", "outcome": "<brief>"}}
+- This preserves the history of intentions for pattern analysis
+- The Heartbeat skips closed open loops automatically
+
+PROACTIVE PINGS:
+- The Heartbeat will sometimes prompt you to ask the user about old open loops (>3 days, not closed)
+- When that happens, ask gently — "Vor X Tagen wolltest du Y prüfen — wie ist da der Stand?"
+- If the user replies that it''s done/abandoned → close the memory as described above'),
+
   ('task_management', 'You can manage tasks for the user via the Task Manager tool.
 
 IMPORTANT - REMINDERS AND TASKS:
@@ -2453,7 +2484,8 @@ PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U postgres -d postgres -c "
 INSERT INTO public.heartbeat_config (check_name, config, interval_minutes, enabled)
 VALUES
   ('heartbeat', '{\"min_interval_hours\": 2}', 15, false),
-  ('morning_briefing', '{}', 1440, false)
+  ('morning_briefing', '{}', 1440, false),
+  ('open_loop_check', '{\"min_interval_hours\": 24, \"min_age_days\": 3}', 15, true)
 ON CONFLICT (check_name) DO NOTHING;
 " 2>/dev/null
 
