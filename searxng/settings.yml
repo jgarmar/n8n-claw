@@ -3,7 +3,7 @@ use_default_settings: true
 server:
   bind_address: "0.0.0.0"
   port: 8080
-  secret_key: "{{SEARXNG_SECRET_KEY}}"
+  secret_key: "7c40ff83353d89452f86c4d413a09ed8b4d95f8dd578b53f3c1acf97ac079415"
 
 search:
   formats:

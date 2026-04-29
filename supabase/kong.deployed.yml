@@ -1,0 +1,35 @@
+_format_version: "1.1"
+
+services:
+  - name: rest-v1
+    url: http://rest:3000/
+    routes:
+      - name: rest-v1-all
+        strip_path: true
+        paths:
+          - /rest/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: false
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - anon
+            - service_role
+
+consumers:
+  - username: anon
+    keyauth_credentials:
+      - key: "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogImFub24iLCAiaXNzIjogInN1cGFiYXNlIiwgImlhdCI6IDE3NzE3OTM2ODQsICJleHAiOiAyMDg3MTUzNjg0fQ.u6ONGkEfvDbyOriXsmflJSX2qbNeTDuT27zgJzyyylg"
+    acls:
+      - group: anon
+
+  - username: service_role
+    keyauth_credentials:
+      - key: "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogInNlcnZpY2Vfcm9sZSIsICJpc3MiOiAic3VwYWJhc2UiLCAiaWF0IjogMTc3MTc5MzY4NCwgImV4cCI6IDIwODcxNTM2ODR9.nlkHYX8MeD_WxTdB6cd50kHM8pC-VunZJEyP4Z5Osh4"
+    acls:
+      - group: service_role
+      - group: anon
